@@ -5,6 +5,7 @@ import 'package:periksa_kesehatan/widgets/cards/health_metric_card.dart';
 import 'package:periksa_kesehatan/widgets/common/bottom_nav_bar.dart';
 import 'package:periksa_kesehatan/pages/input/input_data_kesehatan_page.dart';
 import 'package:periksa_kesehatan/pages/peringatan-kesehatan/peringatan_kesehatan_page.dart';
+import 'package:periksa_kesehatan/pages/riwayat/riwayat_kesehatan_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -389,6 +390,16 @@ class _HomePageState extends State<HomePage> {
           setState(() {
             _selectedIndex = index;
           });
+          
+          // Navigasi ke halaman sesuai index
+          if (index == 1) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const RiwayatKesehatanPage(),
+              ),
+            );
+          }
         },
         showFAB: false,
       ),
@@ -429,4 +440,5 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
+
 }
