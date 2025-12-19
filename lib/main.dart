@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:periksa_kesehatan/pages/auth/login_page.dart';
+import 'package:periksa_kesehatan/pages/auth/login/login_page.dart';
 
 void main() {
   runApp(const MyApp());

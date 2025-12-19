@@ -1,17 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:periksa_kesehatan/core/constants/app_colors.dart';
-import 'package:periksa_kesehatan/pages/auth/login_page.dart';
+import 'package:periksa_kesehatan/pages/auth/register/register_page.dart';
+import 'package:periksa_kesehatan/pages/home/home_page.dart';
 
-class RegisterPage extends StatefulWidget {
-  const RegisterPage({super.key});
+class LoginPage extends StatefulWidget {
+  const LoginPage({super.key});
 
   @override
-  State<RegisterPage> createState() => _RegisterPageState();
+  State<LoginPage> createState() => _LoginPageState();
 }
 
-class _RegisterPageState extends State<RegisterPage> {
-  bool _agreeToTerms = false;
+class _LoginPageState extends State<LoginPage> {
+  bool _rememberMe = false;
 
   @override
   Widget build(BuildContext context) {
@@ -119,11 +120,11 @@ class _RegisterPageState extends State<RegisterPage> {
                 ),
               ),
 
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
 
               /// TITLE
               Text(
-                'Buat Akun',
+                'Selamat Datang',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.nunitoSans(
                   fontSize: 24,
@@ -134,7 +135,7 @@ class _RegisterPageState extends State<RegisterPage> {
               const SizedBox(height: 6),
 
               Text(
-                'Daftar untuk memulai perjalanan Anda',
+                'Masuk ke akun Anda untuk melanjutkan',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.nunitoSans(
                   fontSize: 15,
@@ -144,78 +145,72 @@ class _RegisterPageState extends State<RegisterPage> {
 
               const SizedBox(height: 24),
 
-              buildInputField('Nama Lengkap', 'Masukkan nama lengkap Anda'),
-              buildInputField('Email', 'Masukkan email Anda'),
-              buildInputField('Kata Sandi', 'Buat kata sandi',
-                  isPassword: true),
-
-              /// KONFIRMASI PASSWORD
               buildInputField(
-                'Konfirmasi Kata Sandi',
-                'Masukkan kembali kata sandi',
+                'Email atau Username',
+                'Masukkan email atau username',
+              ),
+
+              buildInputField(
+                'Kata Sandi',
+                'Masukkan kata sandi',
                 isPassword: true,
               ),
 
-              /// TERMS
-Row(
-  crossAxisAlignment: CrossAxisAlignment.start,
-  children: [
-    SizedBox(
-      width: 24, // lebar checkbox tanpa padding berlebih
-      height: 24,
-      child: Checkbox(
-        value: _agreeToTerms,
-        activeColor: AppColors.authPrimary,
-        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        visualDensity: VisualDensity.compact,
-        onChanged: (value) {
-          setState(() {
-            _agreeToTerms = value ?? false;
-          });
-        },
-      ),
-    ),
-    const SizedBox(width: 8),
-    Expanded(
-      child: RichText(
-        text: TextSpan(
-          style: GoogleFonts.nunitoSans(
-            fontSize: 13.5,
-            color: const Color(0xFF666666),
-          ),
-          children: const [
-            TextSpan(text: 'Saya setuju dengan '),
-            TextSpan(
-              text: 'Syarat & Ketentuan',
-              style: TextStyle(
-                color: AppColors.linkColor,
-                fontWeight: FontWeight.w500,
+              /// REMEMBER ME + FORGOT PASSWORD
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: Checkbox(
+                          value: _rememberMe,
+                          activeColor: AppColors.authPrimary,
+                          materialTapTargetSize:
+                              MaterialTapTargetSize.shrinkWrap,
+                          visualDensity: VisualDensity.compact,
+                          onChanged: (value) {
+                            setState(() {
+                              _rememberMe = value ?? false;
+                            });
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Ingat saya',
+                        style: GoogleFonts.nunitoSans(
+                          fontSize: 13.5,
+                          color: const Color(0xFF666666),
+                        ),
+                      ),
+                    ],
+                  ),
+                  GestureDetector(
+                    onTap: () {},
+                    child: Text(
+                      'Lupa kata sandi?',
+                      style: GoogleFonts.nunitoSans(
+                        color: AppColors.linkColor,
+                        fontWeight: FontWeight.w500,
+                        fontSize: 13.5,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ),
-            TextSpan(text: ' dan '),
-            TextSpan(
-              text: 'Kebijakan Privasi',
-              style: TextStyle(
-                color: AppColors.linkColor,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-      ),
-    ),
-  ],
-),
 
               const SizedBox(height: 20),
 
-              /// BUTTON REGISTER
+              /// LOGIN BUTTON
               ElevatedButton(
                 onPressed: () {
                   Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => const LoginPage(),
+                      builder: (_) => const HomePage(),
                     ),
                   );
                 },
@@ -227,7 +222,7 @@ Row(
                   ),
                 ),
                 child: Text(
-                  'Daftar',
+                  'Masuk',
                   style: GoogleFonts.nunitoSans(
                     fontSize: 18,
                     fontWeight: FontWeight.w600,
@@ -244,7 +239,7 @@ Row(
                   Expanded(child: Divider()),
                   Padding(
                     padding: EdgeInsets.symmetric(horizontal: 10),
-                    child: Text('Atau Daftar dengan'),
+                    child: Text('Atau Masuk dengan'),
                   ),
                   Expanded(child: Divider()),
                 ],
@@ -263,13 +258,13 @@ Row(
 
               const SizedBox(height: 24),
 
-              /// LOGIN LINK
+              /// REGISTER LINK
               GestureDetector(
                 onTap: () {
                   Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => const LoginPage(),
+                      builder: (_) => const RegisterPage(),
                     ),
                   );
                 },
@@ -281,9 +276,9 @@ Row(
                         color: const Color(0xFF666666),
                       ),
                       children: const [
-                        TextSpan(text: 'Sudah punya akun? '),
+                        TextSpan(text: 'Belum punya akun? '),
                         TextSpan(
-                          text: 'Masuk sekarang',
+                          text: 'Daftar sekarang',
                           style: TextStyle(
                             color: AppColors.linkColor,
                             fontWeight: FontWeight.w600,
