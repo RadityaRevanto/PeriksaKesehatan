@@ -6,6 +6,10 @@ class AppColors {
   static const Color primaryLight = Color(0xFF66D9B8);
   static const Color primaryDark = Color(0xFF388E3C);
   
+  // Auth Colors
+  static const Color authPrimary = Color(0xFF38A562);
+  static const Color linkColor = authPrimary;
+  
   // Background Colors
   static const Color background = Color(0xFFF5F5F5);
   static const Color cardBackground = Colors.white;
