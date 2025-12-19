@@ -4,6 +4,7 @@ import 'package:periksa_kesehatan/core/constants/app_colors.dart';
 import 'package:periksa_kesehatan/widgets/cards/health_metric_card.dart';
 import 'package:periksa_kesehatan/widgets/common/bottom_nav_bar.dart';
 import 'package:periksa_kesehatan/pages/input/input_data_kesehatan_page.dart';
+import 'package:periksa_kesehatan/pages/peringatan-kesehatan/peringatan_kesehatan_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -227,7 +228,8 @@ class _HomePageState extends State<HomePage> {
                                     Navigator.push(
                                       context,
                                       MaterialPageRoute(
-                                        builder: (context) => const InputDataKesehatanPage(),
+                                        builder: (context) =>
+                                            const InputDataKesehatanPage(),
                                       ),
                                     );
                                   },
@@ -243,7 +245,8 @@ class _HomePageState extends State<HomePage> {
                                     Navigator.push(
                                       context,
                                       MaterialPageRoute(
-                                        builder: (context) => const InputDataKesehatanPage(),
+                                        builder: (context) =>
+                                            const InputDataKesehatanPage(),
                                       ),
                                     );
                                   },
@@ -263,7 +266,8 @@ class _HomePageState extends State<HomePage> {
                                     Navigator.push(
                                       context,
                                       MaterialPageRoute(
-                                        builder: (context) => const InputDataKesehatanPage(),
+                                        builder: (context) =>
+                                            const InputDataKesehatanPage(),
                                       ),
                                     );
                                   },
@@ -279,7 +283,8 @@ class _HomePageState extends State<HomePage> {
                                     Navigator.push(
                                       context,
                                       MaterialPageRoute(
-                                        builder: (context) => const InputDataKesehatanPage(),
+                                        builder: (context) =>
+                                            const InputDataKesehatanPage(),
                                       ),
                                     );
                                   },
@@ -293,17 +298,20 @@ class _HomePageState extends State<HomePage> {
 
                     const SizedBox(height: 20),
 
-                    // Warning banner
-                    Container(
+                    InkWell(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const PeringatanKesehatanPage()),
+                        );
+                      },
+                      child: Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
                         color: AppColors.warningBg,
                         borderRadius: BorderRadius.circular(16),
                         border: const Border(
-                          left: BorderSide(
-                            color: AppColors.warning,
-                            width: 4,
-                          ),
+                          left: BorderSide(color: AppColors.warning, width: 4),
                         ),
                       ),
                       child: Row(
@@ -349,6 +357,8 @@ class _HomePageState extends State<HomePage> {
                         ],
                       ),
                     ),
+                    ),
+                    // Warning banner
                     const SizedBox(height: 20),
                   ],
                 ),
@@ -357,7 +367,7 @@ class _HomePageState extends State<HomePage> {
           ],
         ),
       ),
-      
+
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           Navigator.push(
@@ -382,7 +392,6 @@ class _HomePageState extends State<HomePage> {
         },
         showFAB: false,
       ),
-
     );
   }
 
@@ -399,19 +408,12 @@ class _HomePageState extends State<HomePage> {
         decoration: BoxDecoration(
           color: color.withOpacity(0.1),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: color.withOpacity(0.3),
-            width: 1,
-          ),
+          border: Border.all(color: color.withOpacity(0.3), width: 1),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              icon,
-              color: color,
-              size: 32,
-            ),
+            Icon(icon, color: color, size: 32),
             const SizedBox(height: 8),
             Text(
               label,
