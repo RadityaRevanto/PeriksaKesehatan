@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/constants/app_colors.dart';
-import '../../widgets/common/bottom_nav_bar.dart';
 import 'widget/filter_data_section.dart';
 import 'widget/ringkasan_statistik_section.dart';
 import 'widget/grafik_tren_section.dart';
 import 'widget/catatan_pembacaan_section.dart';
 import 'widget/informasi_medis_section.dart';
-import '../home/home_page.dart';
 
 class RiwayatKesehatanPage extends StatefulWidget {
   const RiwayatKesehatanPage({super.key});
@@ -19,7 +17,6 @@ class RiwayatKesehatanPage extends StatefulWidget {
 class _RiwayatKesehatanPageState extends State<RiwayatKesehatanPage> {
   String? _selectedTimeRange = '7 Hari';
   String? _selectedMetricType = 'Tekanan Darah';
-  int _selectedIndex = 1;
 
   void _resetFilters() {
     setState(() {
@@ -202,10 +199,7 @@ class _RiwayatKesehatanPageState extends State<RiwayatKesehatanPage> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
-          onPressed: () => Navigator.pop(context),
-        ),
+        leading: null,
         title: Text(
           'Riwayat Kesehatan',
           style: GoogleFonts.nunitoSans(
@@ -318,39 +312,6 @@ class _RiwayatKesehatanPageState extends State<RiwayatKesehatanPage> {
             const SizedBox(height: 20), // Extra spacing at bottom
           ],
         ),
-      ),
-      bottomNavigationBar: CustomBottomNavBar(
-        selectedIndex: _selectedIndex,
-        onItemTapped: (index) {
-          setState(() {
-            _selectedIndex = index;
-          });
-          if (index == 0) {
-            // Kembali ke HomePage
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const HomePage(),
-              ),
-            );
-          } else if (index == 1) {
-          } else if (index == 2) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const HomePage(),
-              ),
-            );
-          } else if (index == 3) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const HomePage(),
-              ),
-            );
-          }
-        },
-        showFAB: false,
       ),
     );
   }
