@@ -46,18 +46,21 @@ class GrafikTrenSection extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Grafik Tren - Tekanan Darah',
-                style: GoogleFonts.nunitoSans(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
+              Expanded(
+                child: Text(
+                  'Grafik Tren - Tekanan Darah',
+                  style: GoogleFonts.nunitoSans(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
+              const SizedBox(width: 8),
               InkWell(
-                onTap: () {
-                  // TODO: Navigasi ke detail
-                },
+                onTap: () {},
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [

@@ -50,7 +50,7 @@ class CatatanPembacaanSection extends StatelessWidget {
                     style: GoogleFonts.nunitoSans(
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
-                      color: AppColors.primary,
+                      color: AppColors.textSecondary,
                     ),
                   ),
                   const SizedBox(width: 12),
