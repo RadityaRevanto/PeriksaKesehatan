@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:periksa_kesehatan/core/constants/app_colors.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -13,80 +14,10 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7F8),
-      // LayoutBuilder adalah kunci agar tampilan adaptif (HP & Desktop)
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          // Jika lebar layar lebih dari 800px, tampilkan mode Desktop (2 Kolom)
-          if (constraints.maxWidth > 800) {
-            return _buildDesktopLayout();
-          } else {
-            // Jika layar kecil (HP), tampilkan mode Mobile (1 Kolom)
-            return _buildMobileLayout();
-          }
-        },
-      ),
+      body: _buildMobileLayout(),
     );
   }
 
-  // ----------------------------------------------------------------------
-  // 1. TAMPILAN DESKTOP (2 KOLOM)
-  // ----------------------------------------------------------------------
-  Widget _buildDesktopLayout() {
-    return Row(
-      children: [
-        // SISI KIRI (Profil & Stats) - Lebar Tetap
-        Container(
-          width: 350,
-          color: Colors.white,
-          child: Column(
-            children: [
-              _buildHeader(isDesktop: true),
-              const SizedBox(height: 20),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: _buildStatsCard(),
-              ),
-              const Spacer(),
-              _buildLogoutButton(),
-              const SizedBox(height: 30),
-            ],
-          ),
-        ),
-        // SISI KANAN (Informasi Detail) - Scrollable
-        Expanded(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(40),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildSectionTitle("Informasi Pribadi"),
-                _buildInfoCard(),
-                const SizedBox(height: 30),
-                _buildSectionTitle("Target Kesehatan"),
-                // Grid untuk Target Kesehatan agar tidak terlalu panjang ke bawah di desktop
-                Wrap(
-                  spacing: 20,
-                  runSpacing: 20,
-                  children: [
-                    SizedBox(width: 300, child: _buildHealthCard("Tekanan Darah", "120/80 mmHg", 0.85, "85% target", Colors.green)),
-                    SizedBox(width: 300, child: _buildHealthCard("Gula Darah", "< 140 mg/dL", 0.6, "Perlu peningkatan", Colors.orange)),
-                    SizedBox(width: 300, child: _buildHealthCard("Berat Badan", "60 kg", 0.92, "92% target", Colors.green)),
-                  ],
-                ),
-                const SizedBox(height: 30),
-                _buildSectionTitle("Pengaturan Aplikasi"),
-                _buildSettingCard(),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ----------------------------------------------------------------------
-  // 2. TAMPILAN MOBILE (Kodingan Asli Anda)
-  // ----------------------------------------------------------------------
   Widget _buildMobileLayout() {
     return Center(
       child: Container(
@@ -104,11 +35,11 @@ class _ProfilePageState extends State<ProfilePage> {
                   _buildSectionTitle("Informasi Pribadi"),
                   _buildInfoCard(),
                   const SizedBox(height: 25),
-                  _buildSectionTitle("Target Kesehatan"),
-                  _buildHealthCard("Tekanan Darah", "120/80 mmHg", 0.85, "85% mencapai target", Colors.green),
-                  _buildHealthCard("Gula Darah", "< 140 mg/dL", 0.6, "Perlu peningkatan", Colors.orange),
-                  _buildHealthCard("Berat Badan", "60 kg", 0.92, "92% mencapai target", Colors.green),
-                  const SizedBox(height: 25),
+                  // _buildSectionTitle("Target Kesehatan"),
+                  // _buildHealthCard("Tekanan Darah", "120/80 mmHg", 0.85, "85% mencapai target", Colors.green),
+                  // _buildHealthCard("Gula Darah", "< 140 mg/dL", 0.6, "Perlu peningkatan", Colors.orange),
+                  // _buildHealthCard("Berat Badan", "60 kg", 0.92, "92% mencapai target", Colors.green),
+                  // const SizedBox(height: 25),
                   _buildSectionTitle("Pengaturan Aplikasi"),
                   _buildSettingCard(),
                   const SizedBox(height: 20),
@@ -123,40 +54,103 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  // ----------------------------------------------------------------------
-  // 3. HELPER WIDGETS (Logika Tampilan Tetap Sama)
-  // ----------------------------------------------------------------------
 
-  Widget _buildHeader({bool isDesktop = false}) {
+  Widget _buildHeader() {
     return Container(
-      padding: EdgeInsets.fromLTRB(20, isDesktop ? 60 : 50, 20, 30),
-      decoration: const BoxDecoration(color: AppColors.authPrimary),
+      padding: const EdgeInsets.fromLTRB(20, 50, 20, 40),
+      decoration: BoxDecoration(
+        color: AppColors.authPrimary,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
       child: Column(
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text("Profil Saya", style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
-              IconButton(onPressed: () {}, icon: const Icon(Icons.settings, color: Colors.white)),
+              Text(
+                "Profil Saya",
+                style: GoogleFonts.nunitoSans(
+                  color: Colors.white,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.5,
+                ),
+              ),
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () {},
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.settings, color: Colors.white, size: 22),
+                  ),
+                ),
+              ),
             ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 30),
           Row(
             children: [
-              const CircleAvatar(
-                radius: 35,
-                backgroundImage: NetworkImage('https://i.pravatar.cc/150?u=siti'),
+              // Avatar dengan border modern
+              Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 3),
+                ),
+                child: const CircleAvatar(
+                  radius: 38,
+                  backgroundImage: NetworkImage('https://i.pravatar.cc/150?u=siti'),
+                ),
               ),
-              const SizedBox(width: 15),
-              const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text("Ibu Siti", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-                  Text("sitirahmawati@email.com", style: TextStyle(color: Colors.white70, fontSize: 14)),
-                ],
-              )
+              const SizedBox(width: 20),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Ibu Siti",
+                      style: GoogleFonts.nunitoSans(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.email_outlined,
+                          size: 16,
+                          color: Colors.white.withOpacity(0.9),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          "sitirahmawati@email.com",
+                          style: GoogleFonts.nunitoSans(
+                            color: Colors.white.withOpacity(0.9),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
             ],
-          )
+          ),
         ],
       ),
     );
@@ -164,36 +158,92 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Widget _buildStatsCard() {
     return Container(
-      padding: const EdgeInsets.all(20),
+      margin: const EdgeInsets.symmetric(horizontal: 0),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(15),
-          border: Border.all(color: Colors.grey.shade200)
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
+            spreadRadius: 0,
+          ),
+        ],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _statItem("65", "kg"),
-          _statItem("158", "cm"),
-          _statItem("52", "tahun"),
+          _statItem("65", "kg", Icons.monitor_weight_outlined, AppColors.primary),
+          _buildStatDivider(),
+          _statItem("158", "cm", Icons.height_outlined, AppColors.primaryLight),
+          _buildStatDivider(),
+          _statItem("52", "tahun", Icons.cake_outlined, AppColors.primaryDark),
         ],
       ),
     );
   }
 
-  Widget _statItem(String value, String unit) {
-    return Column(
-      children: [
-        Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF2D473E))),
-        Text(unit, style: const TextStyle(color: Colors.grey)),
-      ],
+  Widget _buildStatDivider() {
+    return Container(
+      width: 1,
+      height: 50,
+      color: Colors.grey.shade200,
+    );
+  }
+
+  Widget _statItem(String value, String unit, IconData icon, Color color) {
+    return Expanded(
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              icon,
+              color: color,
+              size: 24,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            value,
+            style: GoogleFonts.nunitoSans(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: const Color(0xFF2D473E),
+              letterSpacing: -0.5,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            unit,
+            style: GoogleFonts.nunitoSans(
+              color: Colors.grey.shade600,
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildSectionTitle(String title) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
-      child: Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF2D473E))),
+      child: Text(
+        title,
+        style: GoogleFonts.nunitoSans(
+          fontSize: 16,
+          fontWeight: FontWeight.bold,
+          color: const Color(0xFF2D473E),
+        ),
+      ),
     );
   }
 
@@ -248,8 +298,20 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget _infoTile(IconData icon, String title, String subtitle, {bool isLast = false}) {
     return ListTile(
       leading: Icon(icon, color: AppColors.authPrimary),
-      title: Text(title, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-      subtitle: Text(subtitle, style: const TextStyle(color: Colors.black, fontWeight: FontWeight.w500)),
+      title: Text(
+        title,
+        style: GoogleFonts.nunitoSans(
+          fontSize: 12,
+          color: Colors.grey,
+        ),
+      ),
+      subtitle: Text(
+        subtitle,
+        style: GoogleFonts.nunitoSans(
+          color: Colors.black,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
       trailing: const Icon(Icons.chevron_right, size: 20),
     );
   }
@@ -257,11 +319,23 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget _buildSettingTile(IconData icon, String title, {String? trailing, bool isLast = false}) {
     return ListTile(
       leading: Icon(icon, color: AppColors.authPrimary),
-      title: Text(title, style: const TextStyle(fontSize: 14)),
+      title: Text(
+        title,
+        style: GoogleFonts.nunitoSans(
+          fontSize: 14,
+        ),
+      ),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (trailing != null) Text(trailing, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+          if (trailing != null)
+            Text(
+              trailing,
+              style: GoogleFonts.nunitoSans(
+                color: Colors.grey,
+                fontSize: 12,
+              ),
+            ),
           const Icon(Icons.chevron_right, color: Colors.grey, size: 20),
         ],
       ),
@@ -283,11 +357,28 @@ class _ProfilePageState extends State<ProfilePage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-              const Text("Edit", style: TextStyle(color: AppColors.authPrimary, fontWeight: FontWeight.bold)),
+              Text(
+                title,
+                style: GoogleFonts.nunitoSans(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Text(
+                "Edit",
+                style: GoogleFonts.nunitoSans(
+                  color: AppColors.authPrimary,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ],
           ),
-          Text("Target: $target", style: const TextStyle(color: Colors.grey, fontSize: 12)),
+          Text(
+            "Target: $target",
+            style: GoogleFonts.nunitoSans(
+              color: Colors.grey,
+              fontSize: 12,
+            ),
+          ),
           const SizedBox(height: 10),
           LinearProgressIndicator(
               value: progress,
@@ -296,7 +387,13 @@ class _ProfilePageState extends State<ProfilePage> {
               borderRadius: BorderRadius.circular(5)
           ),
           const SizedBox(height: 5),
-          Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+          Text(
+            label,
+            style: GoogleFonts.nunitoSans(
+              fontSize: 11,
+              color: Colors.grey,
+            ),
+          ),
         ],
       ),
     );
@@ -311,7 +408,13 @@ class _ProfilePageState extends State<ProfilePage> {
         child: TextButton.icon(
           onPressed: () {},
           icon: const Icon(Icons.logout, color: Colors.red),
-          label: const Text("Keluar", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+          label: Text(
+            "Keluar",
+            style: GoogleFonts.nunitoSans(
+              color: Colors.red,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
         ),
       ),
     );

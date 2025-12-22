@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../core/constants/app_colors.dart';
 import '../peringatan-kesehatan/widgets/video_card.dart';
 import '../artikel/artikel_page.dart';
+import 'video_player_page.dart';
 
 class EdukasiPage extends StatefulWidget {
   const EdukasiPage({super.key});
@@ -171,7 +172,8 @@ class _EdukasiPageState extends State<EdukasiPage> {
   }
 
   Widget _buildVideoList() {
-    // Sample video data
+    // Sample video data dengan URL video
+    // Catatan: Ganti URL berikut dengan URL video YouTube atau video lainnya yang valid
     final List<Map<String, dynamic>> videos = [
       {
         'title': 'Mengenal Hipertensi dan Cara Mengatasinya',
@@ -182,6 +184,7 @@ class _EdukasiPageState extends State<EdukasiPage> {
         'likes': '156',
         'playButtonColor': const Color(0xFF4CAF50),
         'category': 'Hipertensi',
+        'videoUrl': 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
       },
       {
         'title': 'Diabetes: Gejala, Penyebab, dan Pencegahan',
@@ -192,6 +195,7 @@ class _EdukasiPageState extends State<EdukasiPage> {
         'likes': '98',
         'playButtonColor': const Color(0xFFFF7043),
         'category': 'Diabetes',
+        'videoUrl': 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
       },
       {
         'title': 'Menjaga Kesehatan Jantung dengan Pola Hidup Sehat',
@@ -202,6 +206,7 @@ class _EdukasiPageState extends State<EdukasiPage> {
         'likes': '245',
         'playButtonColor': const Color(0xFFE53935),
         'category': 'Jantung',
+        'videoUrl': 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
       },
       {
         'title': 'Menjaga Berat Badan Ideal untuk Kesehatan',
@@ -212,6 +217,7 @@ class _EdukasiPageState extends State<EdukasiPage> {
         'likes': '203',
         'playButtonColor': const Color(0xFF2196F3),
         'category': 'Semua',
+        'videoUrl': 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
       },
       {
         'title': 'Panduan Diet untuk Penderita Diabetes',
@@ -222,6 +228,7 @@ class _EdukasiPageState extends State<EdukasiPage> {
         'likes': '112',
         'playButtonColor': const Color(0xFFFF7043),
         'category': 'Diabetes',
+        'videoUrl': 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4',
       },
       {
         'title': 'Mengontrol Tekanan Darah Tinggi',
@@ -232,6 +239,7 @@ class _EdukasiPageState extends State<EdukasiPage> {
         'likes': '178',
         'playButtonColor': const Color(0xFF4CAF50),
         'category': 'Hipertensi',
+        'videoUrl': 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4',
       },
     ];
 
@@ -253,7 +261,20 @@ class _EdukasiPageState extends State<EdukasiPage> {
             likes: video['likes'] as String,
             playButtonColor: video['playButtonColor'] as Color,
             onTap: () {
-              // TODO: Implementasi navigasi ke video player
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => VideoPlayerPage(
+                    videoUrl: video['videoUrl'] as String,
+                    title: video['title'] as String,
+                    language: video['language'] as String,
+                    doctor: video['doctor'] as String,
+                    duration: video['duration'] as String,
+                    views: video['views'] as String,
+                    likes: video['likes'] as String,
+                  ),
+                ),
+              );
             },
           ),
         );
