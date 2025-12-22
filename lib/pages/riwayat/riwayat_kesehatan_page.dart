@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/constants/app_colors.dart';
+import '../../services/pdf_report_service.dart';
 import 'widget/filter_data_section.dart';
 import 'widget/ringkasan_statistik_section.dart';
 import 'widget/grafik_tren_section.dart';
@@ -162,6 +163,79 @@ class _RiwayatKesehatanPageState extends State<RiwayatKesehatanPage> {
     ];
   }
 
+  Future<void> _downloadMedicalReport(BuildContext context) async {
+    try {
+      // Show loading dialog
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+
+      // Get health records
+      final healthRecords = _getReadingNotes();
+      
+      // Calculate date range based on selected time range
+      final now = DateTime.now();
+      DateTime startDate;
+      DateTime endDate = now;
+
+      switch (_selectedTimeRange) {
+        case '7 Hari':
+          startDate = now.subtract(const Duration(days: 7));
+          break;
+        case '30 Hari':
+          startDate = now.subtract(const Duration(days: 30));
+          break;
+        case '3 Bulan':
+          startDate = now.subtract(const Duration(days: 90));
+          break;
+        default:
+          startDate = now.subtract(const Duration(days: 7));
+      }
+
+      // Generate and download PDF
+      await PdfReportService.generateAndDownloadReport(
+        patientName: 'Pasien', // TODO: Get from user profile
+        patientAge: 30, // TODO: Get from user profile
+        patientGender: 'Laki-laki', // TODO: Get from user profile
+        healthRecords: healthRecords,
+        startDate: startDate,
+        endDate: endDate,
+      );
+
+      // Close loading dialog
+      if (context.mounted) {
+        Navigator.of(context).pop();
+        
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Laporan medis berhasil diunduh'),
+            backgroundColor: AppColors.success,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      // Close loading dialog
+      if (context.mounted) {
+        Navigator.of(context).pop();
+        
+        // Show error message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal mengunduh laporan: $e'),
+            backgroundColor: AppColors.error,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
   void _showCustomDatePicker() {
     showDateRangePicker(
       context: context,
@@ -304,9 +378,7 @@ class _RiwayatKesehatanPageState extends State<RiwayatKesehatanPage> {
             const SizedBox(height: 20),
             
             InformasiMedisSection(
-              onDownloadTap: () {
-                // TODO: Implementasi unduh laporan medis
-              },
+              onDownloadTap: () => _downloadMedicalReport(context),
             ),
             
             const SizedBox(height: 20), // Extra spacing at bottom
