@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:periksa_kesehatan/core/constants/app_colors.dart';
 import 'package:periksa_kesehatan/pages/auth/register/register_page.dart';
 import 'package:periksa_kesehatan/pages/home/home_page.dart';
+import 'package:periksa_kesehatan/widgets/common/bottom_nav_bar.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -210,7 +211,7 @@ class _LoginPageState extends State<LoginPage> {
                   Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => const HomePage(),
+                      builder: (_) => const BottomNavigation(),
                     ),
                   );
                 },

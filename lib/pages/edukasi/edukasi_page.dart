@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/constants/app_colors.dart';
 import '../peringatan-kesehatan/widgets/video_card.dart';
+import '../artikel/artikel_page.dart';
 
 class EdukasiPage extends StatefulWidget {
   const EdukasiPage({super.key});
@@ -315,7 +316,12 @@ class _EdukasiPageState extends State<EdukasiPage> {
   Widget _buildArticleCard(Map<String, dynamic> article) {
     return GestureDetector(
       onTap: () {
-        // TODO: Navigasi ke detail artikel
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const ArtikelPage(),
+          ),
+        );
       },
       child: Container(
         padding: const EdgeInsets.all(12),
