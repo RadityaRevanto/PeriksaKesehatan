@@ -24,6 +24,10 @@ class ApiEndpoints {
   static const String educations = '/educations';
   static const String educationDetail = '/educations'; // + /{id}
   
+  // Education Video endpoints
+  static const String educationVideos = '/education/get-educational-videos';
+  static const String educationVideosByCategory = '/education/get-educational-videos'; // + /{id}
+  
   // Private constructor untuk mencegah instantiasi
   ApiEndpoints._();
 }

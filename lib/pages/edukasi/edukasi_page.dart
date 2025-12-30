@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/constants/app_colors.dart';
+import '../../data/models/education/education_model.dart';
+import '../../presentation/bloc/education/education_bloc.dart';
+import '../../presentation/bloc/education/education_event.dart';
+import '../../presentation/bloc/education/education_state.dart';
 import '../peringatan-kesehatan/widgets/video_card.dart';
 import '../artikel/artikel_page.dart';
 import 'video_player_page.dart';
@@ -14,6 +19,14 @@ class EdukasiPage extends StatefulWidget {
 
 class _EdukasiPageState extends State<EdukasiPage> {
   String _selectedCategory = 'Semua';
+  List<EducationCategoryModel> _allCategories = [];
+
+  @override
+  void initState() {
+    super.initState();
+    // Fetch data saat halaman dimuat
+    context.read<EducationBloc>().add(const FetchEducationalVideosEvent());
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -22,10 +35,6 @@ class _EdukasiPageState extends State<EdukasiPage> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        // leading: IconButton(
-        //   icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
-        //   onPressed: () => Navigator.pop(context),
-        // ),
         title: Text(
           'Edukasi Kesehatan',
           style: GoogleFonts.nunitoSans(
@@ -44,99 +53,154 @@ class _EdukasiPageState extends State<EdukasiPage> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Filter Category Buttons
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
+      body: BlocConsumer<EducationBloc, EducationState>(
+        listener: (context, state) {
+          if (state is EducationError) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(state.message),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        },
+        builder: (context, state) {
+          if (state is EducationLoading) {
+            return const Center(
+              child: CircularProgressIndicator(),
+            );
+          }
+
+          if (state is EducationDataEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  _buildCategoryChip('Semua'),
-                  const SizedBox(width: 12),
-                  _buildCategoryChip('Diabetes'),
-                  const SizedBox(width: 12),
-                  _buildCategoryChip('Hipertensi'),
-                  const SizedBox(width: 12),
-                  _buildCategoryChip('Jantung'),
+                  Icon(
+                    Icons.video_library_outlined,
+                    size: 80,
+                    color: Colors.grey[400],
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Belum ada video edukasi',
+                    style: GoogleFonts.nunitoSans(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
                 ],
               ),
-            ),
-            const SizedBox(height: 24),
-            
-            // Video Edukasi Section
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            );
+          }
+
+          if (state is EducationDataLoaded) {
+            _allCategories = state.categories;
+          }
+
+          return SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  'Video Edukasi',
-                  style: GoogleFonts.nunitoSans(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                InkWell(
-                  onTap: () {
-                    // TODO: Navigasi ke semua video
-                  },
-                  child: Text(
-                    'Lihat Semua',
-                    style: GoogleFonts.nunitoSans(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.primary,
+                // Filter Category Buttons
+                _buildCategoryChips(),
+                const SizedBox(height: 24),
+                
+                // Video Edukasi Section
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Video Edukasi',
+                      style: GoogleFonts.nunitoSans(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
                     ),
-                  ),
+                    InkWell(
+                      onTap: () {
+                        // TODO: Navigasi ke semua video
+                      },
+                      child: Text(
+                        'Lihat Semua',
+                        style: GoogleFonts.nunitoSans(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
+                const SizedBox(height: 16),
+                
+                // Video Cards List
+                _buildVideoList(),
+                
+                const SizedBox(height: 32),
+                
+                // Artikel Kesehatan Section
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Artikel Kesehatan',
+                      style: GoogleFonts.nunitoSans(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    InkWell(
+                      onTap: () {
+                        // TODO: Navigasi ke semua artikel
+                      },
+                      child: Text(
+                        'Lihat Semua',
+                        style: GoogleFonts.nunitoSans(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                
+                // Artikel Cards List
+                _buildArticleList(),
+                
+                const SizedBox(height: 20), // Extra spacing at bottom
               ],
             ),
-            const SizedBox(height: 16),
-            
-            // Video Cards List
-            _buildVideoList(),
-            
-            const SizedBox(height: 32),
-            
-            // Artikel Kesehatan Section
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Artikel Kesehatan',
-                  style: GoogleFonts.nunitoSans(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                InkWell(
-                  onTap: () {
-                    // TODO: Navigasi ke semua artikel
-                  },
-                  child: Text(
-                    'Lihat Semua',
-                    style: GoogleFonts.nunitoSans(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            
-            // Artikel Cards List
-            _buildArticleList(),
-            
-            const SizedBox(height: 20), // Extra spacing at bottom
-          ],
-        ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildCategoryChips() {
+    // Build category chips from API data
+    List<String> categories = ['Semua'];
+    if (_allCategories.isNotEmpty) {
+      categories.addAll(_allCategories.map((cat) => cat.kategori).toList());
+    }
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: categories.map((category) {
+          return Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: _buildCategoryChip(category),
+          );
+        }).toList(),
       ),
     );
   }
@@ -172,106 +236,85 @@ class _EdukasiPageState extends State<EdukasiPage> {
   }
 
   Widget _buildVideoList() {
-    // Sample video data dengan URL video
-    // Catatan: Ganti URL berikut dengan URL video YouTube atau video lainnya yang valid
-    final List<Map<String, dynamic>> videos = [
-      {
-        'title': 'Mengenal Hipertensi dan Cara Mengatasinya',
-        'language': 'Bahasa Indonesia',
-        'doctor': 'Dr. Siti Nurhaliza',
-        'duration': '5:32',
-        'views': '2.4k',
-        'likes': '156',
-        'playButtonColor': const Color(0xFF4CAF50),
-        'category': 'Hipertensi',
-        'videoUrl': 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-      },
-      {
-        'title': 'Diabetes: Gejala, Penyebab, dan Pencegahan',
-        'language': 'Bahasa Jawa',
-        'doctor': 'Dr. Budi Santoso',
-        'duration': '7:15',
-        'views': '1.8k',
-        'likes': '98',
-        'playButtonColor': const Color(0xFFFF7043),
-        'category': 'Diabetes',
-        'videoUrl': 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
-      },
-      {
-        'title': 'Menjaga Kesehatan Jantung dengan Pola Hidup Sehat',
-        'language': 'Bahasa Indonesia',
-        'doctor': 'Dr. Ahmad Fauzi',
-        'duration': '6:45',
-        'views': '3.2k',
-        'likes': '245',
-        'playButtonColor': const Color(0xFFE53935),
-        'category': 'Jantung',
-        'videoUrl': 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
-      },
-      {
-        'title': 'Menjaga Berat Badan Ideal untuk Kesehatan',
-        'language': 'Bahasa Sunda',
-        'doctor': 'Dr. Rina Melati',
-        'duration': '4:48',
-        'views': '3.1k',
-        'likes': '203',
-        'playButtonColor': const Color(0xFF2196F3),
-        'category': 'Semua',
-        'videoUrl': 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
-      },
-      {
-        'title': 'Panduan Diet untuk Penderita Diabetes',
-        'language': 'Bahasa Indonesia',
-        'doctor': 'Dr. Maya Sari',
-        'duration': '8:20',
-        'views': '1.5k',
-        'likes': '112',
-        'playButtonColor': const Color(0xFFFF7043),
-        'category': 'Diabetes',
-        'videoUrl': 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4',
-      },
-      {
-        'title': 'Mengontrol Tekanan Darah Tinggi',
-        'language': 'Bahasa Jawa',
-        'doctor': 'Dr. Supriyadi',
-        'duration': '5:10',
-        'views': '2.1k',
-        'likes': '178',
-        'playButtonColor': const Color(0xFF4CAF50),
-        'category': 'Hipertensi',
-        'videoUrl': 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4',
-      },
-    ];
+    if (_allCategories.isEmpty) {
+      return Center(
+        child: Text(
+          'Tidak ada video tersedia',
+          style: GoogleFonts.nunitoSans(
+            fontSize: 14,
+            color: AppColors.textSecondary,
+          ),
+        ),
+      );
+    }
 
     // Filter videos berdasarkan category
-    final filteredVideos = _selectedCategory == 'Semua'
-        ? videos
-        : videos.where((video) => video['category'] == _selectedCategory).toList();
+    List<VideoModel> videos = [];
+    if (_selectedCategory == 'Semua') {
+      // Ambil semua video dari semua kategori
+      for (var category in _allCategories) {
+        videos.addAll(category.videos);
+      }
+    } else {
+      // Ambil video dari kategori yang dipilih
+      final selectedCat = _allCategories.firstWhere(
+        (cat) => cat.kategori == _selectedCategory,
+        orElse: () => EducationCategoryModel(id: 0, kategori: '', videos: []),
+      );
+      videos = selectedCat.videos;
+    }
+
+    if (videos.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Text(
+            'Belum ada video untuk kategori $_selectedCategory',
+            style: GoogleFonts.nunitoSans(
+              fontSize: 14,
+              color: AppColors.textSecondary,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ),
+      );
+    }
 
     return Column(
-      children: filteredVideos.map((video) {
+      children: videos.asMap().entries.map((entry) {
+        final video = entry.value;
+        final index = entry.key;
+        
+        // Color variations for play buttons
+        final colors = [
+          const Color(0xFF4CAF50),
+          const Color(0xFFFF7043),
+          const Color(0xFFE53935),
+          const Color(0xFF2196F3),
+        ];
+
         return Padding(
           padding: const EdgeInsets.only(bottom: 16),
           child: VideoCard(
-            title: video['title'] as String,
-            language: video['language'] as String,
-            doctor: video['doctor'] as String,
-            duration: video['duration'] as String,
-            views: video['views'] as String,
-            likes: video['likes'] as String,
-            playButtonColor: video['playButtonColor'] as Color,
+            title: video.title,
+            language: 'Bahasa Indonesia', // Default, bisa disesuaikan
+            doctor: 'Tim Edukasi', // Default, bisa disesuaikan
+            duration: '5:00', // Default, bisa disesuaikan
+            views: '1.2k', // Default, bisa disesuaikan
+            likes: '100', // Default, bisa disesuaikan
+            playButtonColor: colors[index % colors.length],
             onTap: () {
               Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (context) => VideoPlayerPage(
-                    videoUrl: video['videoUrl'] as String,
-                    title: video['title'] as String,
-                    language: video['language'] as String,
-                    doctor: video['doctor'] as String,
-                    duration: video['duration'] as String,
-                    views: video['views'] as String,
-                    likes: video['likes'] as String,
+                    videoUrl: video.url,
+                    title: video.title,
+                    language: 'Bahasa Indonesia',
+                    doctor: 'Tim Edukasi',
+                    duration: '5:00',
+                    views: '1.2k',
+                    likes: '100',
                   ),
                 ),
               );
@@ -283,7 +326,7 @@ class _EdukasiPageState extends State<EdukasiPage> {
   }
 
   Widget _buildArticleList() {
-    // Sample article data
+    // Sample article data (tetap menggunakan data dummy untuk artikel)
     final List<Map<String, dynamic>> articles = [
       {
         'title': '10 Makanan Sehat untuk Penderita Diabetes',
@@ -323,6 +366,22 @@ class _EdukasiPageState extends State<EdukasiPage> {
     final filteredArticles = _selectedCategory == 'Semua'
         ? articles
         : articles.where((article) => article['category'] == _selectedCategory).toList();
+
+    if (filteredArticles.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Text(
+            'Belum ada artikel untuk kategori $_selectedCategory',
+            style: GoogleFonts.nunitoSans(
+              fontSize: 14,
+              color: AppColors.textSecondary,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ),
+      );
+    }
 
     return Column(
       children: filteredArticles.map((article) {

@@ -28,13 +28,16 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _currentTime = DateTime.now();
-    // Update setiap detik hanya jika bukan manual date
+    // Update setiap detik untuk:
+    // 1. Update tanggal/waktu di header (jika tidak manual date)
+    // 2. Update "X menit/jam lalu" secara real-time
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (!_isManualDate) {
-        setState(() {
+      setState(() {
+        if (!_isManualDate) {
           _currentTime = DateTime.now();
-        });
-      }
+        }
+        // setState akan trigger rebuild untuk update "X jam lalu"
+      });
     });
     
     // Fetch health data saat page load
@@ -708,10 +711,14 @@ class _HomePageState extends State<HomePage> {
     final now = DateTime.now();
     final difference = now.difference(date);
     
-    if (difference.inMinutes < 60) {
-      return '${difference.inMinutes} menit lalu';
+    if (difference.inSeconds < 60) {
+      return 'Baru saja';
+    } else if (difference.inMinutes < 60) {
+      final minutes = difference.inMinutes;
+      return '$minutes menit lalu';
     } else if (difference.inHours < 24) {
-      return '${difference.inHours} jam lalu';
+      final hours = difference.inHours;
+      return '$hours jam lalu';
     } else if (difference.inDays == 1) {
       return 'Kemarin';
     } else {
