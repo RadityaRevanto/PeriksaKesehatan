@@ -6,12 +6,15 @@ import 'package:periksa_kesehatan/data/datasources/local/auth_local_datasource.d
 import 'package:periksa_kesehatan/data/datasources/remote/auth_remote_datasource.dart';
 import 'package:periksa_kesehatan/data/datasources/remote/health_remote_datasource.dart';
 import 'package:periksa_kesehatan/data/datasources/remote/education_remote_datasource.dart';
+import 'package:periksa_kesehatan/data/datasources/remote/personal_info_remote_datasource.dart';
 import 'package:periksa_kesehatan/data/repositories/auth_repository.dart';
 import 'package:periksa_kesehatan/data/repositories/health_repository.dart';
 import 'package:periksa_kesehatan/data/repositories/education_repository.dart';
+import 'package:periksa_kesehatan/data/repositories/personal_info_repository.dart';
 import 'package:periksa_kesehatan/presentation/bloc/auth/auth_bloc.dart';
 import 'package:periksa_kesehatan/presentation/bloc/health/health_bloc.dart';
 import 'package:periksa_kesehatan/presentation/bloc/education/education_bloc.dart';
+import 'package:periksa_kesehatan/presentation/bloc/personal_info/personal_info_bloc.dart';
 
 /// Service locator menggunakan GetIt
 final sl = GetIt.instance;
@@ -45,6 +48,9 @@ Future<void> init() async {
       storageService: sl(),
     ),
   );
+  sl.registerLazySingleton<PersonalInfoRemoteDatasource>(
+    () => PersonalInfoRemoteDatasource(sl()),
+  );
 
   // Repositories
   sl.registerLazySingleton<AuthRepository>(
@@ -64,6 +70,9 @@ Future<void> init() async {
       remoteDataSource: sl(),
     ),
   );
+  sl.registerLazySingleton<PersonalInfoRepository>(
+    () => PersonalInfoRepository(sl()),
+  );
 
   // BLoC
   sl.registerFactory(
@@ -74,6 +83,9 @@ Future<void> init() async {
   );
   sl.registerFactory(
     () => EducationBloc(educationRepository: sl()),
+  );
+  sl.registerFactory(
+    () => PersonalInfoBloc(sl()),
   );
 }
 

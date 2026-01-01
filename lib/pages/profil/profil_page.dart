@@ -2,10 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:periksa_kesehatan/core/constants/app_colors.dart';
+import 'package:periksa_kesehatan/core/storage/storage_service.dart';
 import 'package:periksa_kesehatan/pages/auth/login/login_page.dart';
+import 'package:periksa_kesehatan/pages/profil/edit_profil_page.dart';
 import 'package:periksa_kesehatan/presentation/bloc/auth/auth_bloc.dart';
 import 'package:periksa_kesehatan/presentation/bloc/auth/auth_event.dart';
 import 'package:periksa_kesehatan/presentation/bloc/auth/auth_state.dart';
+import 'package:periksa_kesehatan/presentation/bloc/personal_info/personal_info_bloc.dart';
+import 'package:periksa_kesehatan/presentation/bloc/personal_info/personal_info_event.dart';
+import 'package:periksa_kesehatan/presentation/bloc/personal_info/personal_info_state.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -15,26 +20,85 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
+  // Controllers for edit form
+  final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController(text: "Siti Rahmawati");
+  final _birthDateController = TextEditingController(text: "15 Januari 1973");
+  final _phoneController = TextEditingController(text: "+62 812-3456-7890");
+  final _addressController = TextEditingController(text: "Jl. Merdeka No. 123, Jakarta");
+  DateTime? _selectedDate = DateTime(1973, 1, 15);
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPersonalInfo();
+  }
+
+  void _loadPersonalInfo() {
+    final token = StorageService.instance.getToken();
+    if (token != null) {
+      context.read<PersonalInfoBloc>().add(LoadPersonalInfo(token));
+    }
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _birthDateController.dispose();
+    _phoneController.dispose();
+    _addressController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
-    return BlocListener<AuthBloc, AuthState>(
-      listener: (context, state) {
-        if (state is AuthUnauthenticated) {
-          // Navigasi ke halaman login setelah logout
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(builder: (context) => const LoginPage()),
-            (route) => false,
-          );
-        } else if (state is AuthError) {
-          // Tampilkan error jika logout gagal
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.message),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      },
+    return MultiBlocListener(
+      listeners: [
+        BlocListener<AuthBloc, AuthState>(
+          listener: (context, state) {
+            if (state is AuthUnauthenticated) {
+              // Navigasi ke halaman login setelah logout
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (context) => const LoginPage()),
+                (route) => false,
+              );
+            } else if (state is AuthError) {
+              // Tampilkan error jika logout gagal
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(state.message),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            }
+          },
+        ),
+        BlocListener<PersonalInfoBloc, PersonalInfoState>(
+          listener: (context, state) {
+            if (state is PersonalInfoLoaded) {
+              // Update controllers with loaded data
+              if (state.personalInfo != null) {
+                setState(() {
+                  _nameController.text = state.personalInfo!.name ?? "Siti Rahmawati";
+                  _birthDateController.text = state.personalInfo!.birthDate ?? "15 Januari 1973";
+                  _phoneController.text = state.personalInfo!.phone ?? "+62 812-3456-7890";
+                  _addressController.text = state.personalInfo!.address ?? "Jl. Merdeka No. 123, Jakarta";
+                  // Parse birth date if needed
+                  // _selectedDate = ...
+                });
+              }
+            } else if (state is PersonalInfoError) {
+              // Show error message
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(state.message),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            }
+          },
+        ),
+      ],
       child: Scaffold(
         backgroundColor: const Color(0xFFF5F7F8),
         body: _buildMobileLayout(),
@@ -59,11 +123,6 @@ class _ProfilePageState extends State<ProfilePage> {
                   _buildSectionTitle("Informasi Pribadi"),
                   _buildInfoCard(),
                   const SizedBox(height: 25),
-                  // _buildSectionTitle("Target Kesehatan"),
-                  // _buildHealthCard("Tekanan Darah", "120/80 mmHg", 0.85, "85% mencapai target", Colors.green),
-                  // _buildHealthCard("Gula Darah", "< 140 mg/dL", 0.6, "Perlu peningkatan", Colors.orange),
-                  // _buildHealthCard("Berat Badan", "60 kg", 0.92, "92% mencapai target", Colors.green),
-                  // const SizedBox(height: 25),
                   _buildSectionTitle("Pengaturan Aplikasi"),
                   _buildSettingCard(),
                   const SizedBox(height: 20),
@@ -280,17 +339,18 @@ class _ProfilePageState extends State<ProfilePage> {
       ),
       child: Column(
         children: [
-          _infoTile(Icons.person, "Nama Lengkap", "Siti Rahmawati"),
+          _infoTile(Icons.person, "Nama Lengkap", _nameController.text),
           _buildDivider(),
-          _infoTile(Icons.calendar_today, "Tanggal Lahir", "15 Januari 1973"),
+          _infoTile(Icons.calendar_today, "Tanggal Lahir", _birthDateController.text),
           _buildDivider(),
-          _infoTile(Icons.phone, "Nomor Telepon", "+62 812-3456-7890"),
+          _infoTile(Icons.phone, "Nomor Telepon", _phoneController.text),
           _buildDivider(),
-          _infoTile(Icons.location_on, "Alamat", "Jl. Merdeka No. 123, Jakarta", isLast: true),
+          _infoTile(Icons.location_on, "Alamat", _addressController.text, isLast: true),
         ],
       ),
     );
   }
+
 
   Widget _buildSettingCard() {
     return Container(
@@ -320,25 +380,69 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget _buildDivider() => const Divider(height: 1, indent: 55, endIndent: 15, color: Color(0xFFF0F0F0));
 
   Widget _infoTile(IconData icon, String title, String subtitle, {bool isLast = false}) {
-    return ListTile(
-      leading: Icon(icon, color: AppColors.authPrimary),
-      title: Text(
-        title,
-        style: GoogleFonts.nunitoSans(
-          fontSize: 12,
-          color: Colors.grey,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () async {
+          final result = await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => EditProfilPage(
+                initialName: _nameController.text,
+                initialBirthDate: _birthDateController.text,
+                initialPhone: _phoneController.text,
+                initialAddress: _addressController.text,
+                initialSelectedDate: _selectedDate,
+              ),
+            ),
+          );
+
+          // Update data if returned from edit page
+          if (result != null && result is Map<String, dynamic>) {
+            setState(() {
+              _nameController.text = result['name'];
+              _birthDateController.text = result['birthDate'];
+              _phoneController.text = result['phone'];
+              _addressController.text = result['address'];
+              _selectedDate = result['selectedDate'];
+            });
+          }
+        },
+        child: ListTile(
+          leading: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppColors.authPrimary.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: AppColors.authPrimary, size: 20),
+          ),
+          title: Text(
+            title,
+            style: GoogleFonts.nunitoSans(
+              fontSize: 12,
+              color: Colors.grey.shade600,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          subtitle: Text(
+            subtitle,
+            style: GoogleFonts.nunitoSans(
+              color: const Color(0xFF2D473E),
+              fontWeight: FontWeight.w600,
+              fontSize: 14,
+            ),
+          ),
+          trailing: Icon(
+            Icons.arrow_forward_ios,
+            size: 16,
+            color: Colors.grey.shade400,
+          ),
         ),
       ),
-      subtitle: Text(
-        subtitle,
-        style: GoogleFonts.nunitoSans(
-          color: Colors.black,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-      trailing: const Icon(Icons.chevron_right, size: 20),
     );
   }
+
 
   Widget _buildSettingTile(IconData icon, String title, {String? trailing, bool isLast = false}) {
     return ListTile(
