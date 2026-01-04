@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'package:periksa_kesehatan/data/models/health/health_summary_model.dart';
 import 'package:periksa_kesehatan/domain/entities/health_data.dart';
 
 /// Base class untuk health states
@@ -46,6 +47,16 @@ class HealthDataLoaded extends HealthState {
 /// Empty state ketika tidak ada data
 class HealthDataEmpty extends HealthState {
   const HealthDataEmpty();
+}
+
+/// Success state ketika health history summary berhasil di-fetch
+class HealthHistoryLoaded extends HealthState {
+  final HealthSummaryModel? summary;
+
+  const HealthHistoryLoaded({required this.summary});
+
+  @override
+  List<Object?> get props => [summary];
 }
 
 /// Error state

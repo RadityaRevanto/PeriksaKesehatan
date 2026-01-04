@@ -8,6 +8,7 @@ import 'package:periksa_kesehatan/presentation/bloc/auth/auth_event.dart';
 import 'package:periksa_kesehatan/presentation/bloc/auth/auth_state.dart';
 import 'package:periksa_kesehatan/presentation/bloc/health/health_bloc.dart';
 import 'package:periksa_kesehatan/presentation/bloc/education/education_bloc.dart';
+import 'package:periksa_kesehatan/presentation/bloc/personal_info/personal_info_bloc.dart';
 import 'package:periksa_kesehatan/widgets/common/bottom_nav_bar.dart';
 
 void main() async {
@@ -31,6 +32,9 @@ class MyApp extends StatelessWidget {
         ),
         BlocProvider(
           create: (context) => di.sl<EducationBloc>(),
+        ),
+        BlocProvider(
+          create: (context) => di.sl<PersonalInfoBloc>(),
         ),
       ],
       child: MaterialApp(

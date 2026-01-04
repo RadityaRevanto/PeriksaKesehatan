@@ -4,11 +4,13 @@ import 'package:periksa_kesehatan/core/network/api_endpoints.dart';
 import 'package:periksa_kesehatan/core/network/api_exception.dart';
 import 'package:periksa_kesehatan/core/storage/storage_service.dart';
 import 'package:periksa_kesehatan/data/models/health/health_data_model.dart';
+import 'package:periksa_kesehatan/data/models/health/health_summary_model.dart';
 
 /// Remote data source untuk health data
 abstract class HealthRemoteDataSource {
   Future<HealthDataModel> saveHealthData(HealthDataModel healthData);
   Future<HealthDataModel?> getHealthData();
+  Future<HealthSummaryModel?> getHealthHistory();
 }
 
 class HealthRemoteDataSourceImpl implements HealthRemoteDataSource {
@@ -108,6 +110,55 @@ class HealthRemoteDataSourceImpl implements HealthRemoteDataSource {
         final errorBody = jsonDecode(response.body);
         throw ApiException(
           message: errorBody['message'] ?? 'Gagal mengambil data kesehatan',
+          statusCode: response.statusCode,
+        );
+      }
+    } catch (e) {
+      if (e is ApiException) {
+        rethrow;
+      }
+      throw ApiException(
+        message: 'Terjadi kesalahan: ${e.toString()}',
+        statusCode: 500,
+      );
+    }
+  }
+
+  @override
+  Future<HealthSummaryModel?> getHealthHistory() async {
+    try {
+      // Get token dari storage
+      final token = await storageService.getToken();
+      if (token == null) {
+        throw ApiException(
+          message: 'Token tidak ditemukan. Silakan login kembali.',
+          statusCode: 401,
+        );
+      }
+
+      final url = Uri.parse('${ApiEndpoints.baseUrl}${ApiEndpoints.getHealthHistory}');
+      
+      final response = await client.get(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final jsonResponse = jsonDecode(response.body);
+        
+        // Response memiliki format: { "data": { "summary": {...} } }
+        if (jsonResponse['data'] != null && jsonResponse['data']['summary'] != null) {
+          return HealthSummaryModel.fromJson(jsonResponse['data']['summary'] as Map<String, dynamic>);
+        }
+        
+        return null;
+      } else {
+        final errorBody = jsonDecode(response.body);
+        throw ApiException(
+          message: errorBody['message'] ?? 'Gagal mengambil ringkasan statistik',
           statusCode: response.statusCode,
         );
       }
