@@ -2,6 +2,7 @@ import 'package:dartz/dartz.dart';
 import 'package:periksa_kesehatan/core/network/api_exception.dart';
 import 'package:periksa_kesehatan/data/datasources/remote/health_remote_datasource.dart';
 import 'package:periksa_kesehatan/data/models/health/health_data_model.dart';
+import 'package:periksa_kesehatan/data/models/health/health_summary_model.dart';
 import 'package:periksa_kesehatan/domain/entities/failure.dart';
 import 'package:periksa_kesehatan/domain/entities/health_data.dart';
 
@@ -9,6 +10,7 @@ import 'package:periksa_kesehatan/domain/entities/health_data.dart';
 abstract class HealthRepository {
   Future<Either<Failure, HealthData>> saveHealthData(HealthData healthData);
   Future<Either<Failure, HealthData?>> getHealthData();
+  Future<Either<Failure, HealthSummaryModel?>> getHealthHistory();
 }
 
 class HealthRepositoryImpl implements HealthRepository {
@@ -48,6 +50,20 @@ class HealthRepositoryImpl implements HealthRepository {
       final healthData = response?.toEntity();
       
       return Right(healthData);
+    } on ApiException catch (e) {
+      return Left(ServerFailure(e.message));
+    } catch (e) {
+      return Left(NetworkFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, HealthSummaryModel?>> getHealthHistory() async {
+    try {
+      // Get from remote
+      final response = await remoteDataSource.getHealthHistory();
+      
+      return Right(response);
     } on ApiException catch (e) {
       return Left(ServerFailure(e.message));
     } catch (e) {

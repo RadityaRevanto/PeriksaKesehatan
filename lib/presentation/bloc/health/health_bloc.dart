@@ -12,6 +12,7 @@ class HealthBloc extends Bloc<HealthEvent, HealthState> {
         super(const HealthInitial()) {
     on<SaveHealthDataEvent>(_onSaveHealthData);
     on<FetchHealthDataEvent>(_onFetchHealthData);
+    on<FetchHealthHistoryEvent>(_onFetchHealthHistory);
     on<ResetHealthStateEvent>(_onResetHealthState);
   }
 
@@ -67,6 +68,25 @@ class HealthBloc extends Bloc<HealthEvent, HealthState> {
             emit(HealthDataLoaded(healthData: healthData));
           }
         },
+      );
+    } catch (e) {
+      emit(HealthError(message: e.toString()));
+    }
+  }
+
+  /// Handle fetch health history event
+  Future<void> _onFetchHealthHistory(
+    FetchHealthHistoryEvent event,
+    Emitter<HealthState> emit,
+  ) async {
+    emit(const HealthLoading());
+    
+    try {
+      final result = await _healthRepository.getHealthHistory();
+
+      result.fold(
+        (failure) => emit(HealthError(message: failure.message)),
+        (summary) => emit(HealthHistoryLoaded(summary: summary)),
       );
     } catch (e) {
       emit(HealthError(message: e.toString()));

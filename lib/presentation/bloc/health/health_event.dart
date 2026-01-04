@@ -28,3 +28,8 @@ class FetchHealthDataEvent extends HealthEvent {
 class ResetHealthStateEvent extends HealthEvent {
   const ResetHealthStateEvent();
 }
+
+/// Event untuk fetch health history summary
+class FetchHealthHistoryEvent extends HealthEvent {
+  const FetchHealthHistoryEvent();
+}
