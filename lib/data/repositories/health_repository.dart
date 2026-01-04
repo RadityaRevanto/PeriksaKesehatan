@@ -11,6 +11,7 @@ abstract class HealthRepository {
   Future<Either<Failure, HealthData>> saveHealthData(HealthData healthData);
   Future<Either<Failure, HealthData?>> getHealthData();
   Future<Either<Failure, HealthSummaryModel?>> getHealthHistory();
+  Future<Either<Failure, List<int>>> downloadHealthHistoryPdf(String timeRange);
 }
 
 class HealthRepositoryImpl implements HealthRepository {
@@ -64,6 +65,20 @@ class HealthRepositoryImpl implements HealthRepository {
       final response = await remoteDataSource.getHealthHistory();
       
       return Right(response);
+    } on ApiException catch (e) {
+      return Left(ServerFailure(e.message));
+    } catch (e) {
+      return Left(NetworkFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<int>>> downloadHealthHistoryPdf(String timeRange) async {
+    try {
+      // Download PDF from remote
+      final pdfBytes = await remoteDataSource.downloadHealthHistoryPdf(timeRange);
+      
+      return Right(pdfBytes);
     } on ApiException catch (e) {
       return Left(ServerFailure(e.message));
     } catch (e) {

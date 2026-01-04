@@ -1,32 +1,140 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../presentation/bloc/health/health_bloc.dart';
+import '../../../presentation/bloc/health/health_event.dart';
+import '../../../presentation/bloc/health/health_state.dart';
+import '../../../data/models/health/health_summary_model.dart';
+import '../detail_grafik_tren_page.dart';
 
-class GrafikTrenSection extends StatelessWidget {
+class GrafikTrenSection extends StatefulWidget {
   const GrafikTrenSection({super.key});
 
   @override
+  State<GrafikTrenSection> createState() => _GrafikTrenSectionState();
+}
+
+class _GrafikTrenSectionState extends State<GrafikTrenSection> {
+  @override
+  void initState() {
+    super.initState();
+    // Fetch health history when widget is initialized
+    context.read<HealthBloc>().add(const FetchHealthHistoryEvent());
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // Sample data untuk 7 hari
-    final List<Map<String, double>> bloodPressureData = [
-      {'systolic': 135.0, 'diastolic': 85.0}, // Sen
-      {'systolic': 130.0, 'diastolic': 80.0}, // Sel
-      {'systolic': 125.0, 'diastolic': 78.0}, // Rab
-      {'systolic': 120.0, 'diastolic': 75.0}, // Kam
-      {'systolic': 118.0, 'diastolic': 72.0}, // Jum
-      {'systolic': 122.0, 'diastolic': 76.0}, // Sab
-      {'systolic': 120.0, 'diastolic': 74.0}, // Min
-    ];
+    return BlocBuilder<HealthBloc, HealthState>(
+      builder: (context, state) {
+        if (state is HealthLoading) {
+          return Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: const Center(
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
 
-    final List<String> days = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
+        if (state is HealthError) {
+          return Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Center(
+              child: Text(
+                'Error: ${state.message}',
+                style: GoogleFonts.nunitoSans(
+                  fontSize: 14,
+                  color: Colors.red,
+                ),
+              ),
+            ),
+          );
+        }
+
+        TrendCharts? trendCharts;
+        if (state is HealthHistoryLoaded && state.summary != null) {
+          trendCharts = state.summary!.trendCharts;
+        }
+
+        // Get blood pressure data from trend charts
+        final List<Map<String, double>> bloodPressureData = [];
+        final List<String> days = [];
+        
+        if (trendCharts?.bloodPressure != null && trendCharts!.bloodPressure!.isNotEmpty) {
+          for (var item in trendCharts.bloodPressure!) {
+            bloodPressureData.add({
+              'systolic': item.systolic,
+              'diastolic': item.diastolic,
+            });
+            
+            // Parse date and format as day name
+            try {
+              final date = DateTime.parse(item.date);
+              final dayName = DateFormat('EEE', 'id_ID').format(date);
+              days.add(dayName.substring(0, 3)); // Get first 3 chars (Sen, Sel, etc.)
+            } catch (e) {
+              days.add(item.date);
+            }
+          }
+        }
+
+        // If no data, show empty state
+        if (bloodPressureData.isEmpty) {
+          return Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Center(
+              child: Text(
+                'Tidak ada data tren tekanan darah',
+                style: GoogleFonts.nunitoSans(
+                  fontSize: 14,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ),
+          );
+        }
     
-    // Normal range
-    final double normalSystolicMin = 90;
-    final double normalSystolicMax = 120;
-    final double normalDiastolicMin = 60;
-    final double normalDiastolicMax = 80;
+        // Normal range
+        final double normalSystolicMin = 90;
+        final double normalSystolicMax = 120;
+        final double normalDiastolicMin = 60;
+        final double normalDiastolicMax = 80;
 
-    return Container(
+        return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -60,12 +168,20 @@ class GrafikTrenSection extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               InkWell(
-                onTap: () {},
+                onTap: () {
+                  // Navigate to detail page
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const DetailGrafikTrenPage(),
+                    ),
+                  );
+                },
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      'Lihat Detail',
+                      'Selengkapnya',
                       style: GoogleFonts.nunitoSans(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
@@ -154,6 +270,8 @@ class GrafikTrenSection extends StatelessWidget {
           ),
         ],
       ),
+    );
+      },
     );
   }
 
