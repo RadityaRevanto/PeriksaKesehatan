@@ -42,11 +42,21 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
 
   Future<void> _initializeVideo() async {
     try {
-      _videoPlayerController = VideoPlayerController.networkUrl(
-        Uri.parse(widget.videoUrl),
-      );
+      // Validasi URL video
+      if (widget.videoUrl.isEmpty) {
+        throw Exception('URL video tidak valid');
+      }
+
+      final uri = Uri.tryParse(widget.videoUrl);
+      if (uri == null || !uri.hasScheme) {
+        throw Exception('Format URL video tidak valid');
+      }
+
+      _videoPlayerController = VideoPlayerController.networkUrl(uri);
 
       await _videoPlayerController.initialize();
+
+      if (!mounted) return;
 
       _chewieController = ChewieController(
         videoPlayerController: _videoPlayerController,
@@ -101,14 +111,18 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
         },
       );
 
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-        _hasError = true;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _hasError = true;
+        });
+      }
     }
   }
 
@@ -199,108 +213,114 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
                     ],
                   ),
                 )
-              : SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Video Player
-                      AspectRatio(
-                        aspectRatio: 16 / 9,
-                        child: Chewie(
-                          controller: _chewieController!,
-                        ),
-                      ),
-                      // Video Info
-                      Container(
+              : _chewieController == null
+                  ? const Center(
+                      child: CircularProgressIndicator(
                         color: Colors.white,
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Title
-                            Text(
-                              widget.title,
-                              style: GoogleFonts.nunitoSans(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.textPrimary,
-                                height: 1.4,
-                              ),
+                      ),
+                    )
+                  : SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Video Player
+                          AspectRatio(
+                            aspectRatio: 16 / 9,
+                            child: Chewie(
+                              controller: _chewieController!,
                             ),
-                            const SizedBox(height: 12),
-                            // Doctor and Language
-                            Text(
-                              '${widget.language} • ${widget.doctor}',
-                              style: GoogleFonts.nunitoSans(
-                                fontSize: 14,
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            // Engagement Metrics
-                            Row(
+                          ),
+                          // Video Info
+                          Container(
+                            color: Colors.white,
+                            padding: const EdgeInsets.all(20),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Row(
-                                  children: [
-                                    Icon(
-                                      Icons.visibility,
-                                      size: 18,
-                                      color: AppColors.textSecondary,
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      widget.views,
-                                      style: GoogleFonts.nunitoSans(
-                                        fontSize: 14,
-                                        color: AppColors.textSecondary,
-                                      ),
-                                    ),
-                                  ],
+                                // Title
+                                Text(
+                                  widget.title,
+                                  style: GoogleFonts.nunitoSans(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.textPrimary,
+                                    height: 1.4,
+                                  ),
                                 ),
-                                const SizedBox(width: 20),
-                                Row(
-                                  children: [
-                                    Icon(
-                                      Icons.thumb_up,
-                                      size: 18,
-                                      color: AppColors.textSecondary,
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      widget.likes,
-                                      style: GoogleFonts.nunitoSans(
-                                        fontSize: 14,
-                                        color: AppColors.textSecondary,
-                                      ),
-                                    ),
-                                  ],
+                                const SizedBox(height: 12),
+                                // Doctor and Language
+                                Text(
+                                  '${widget.language} • ${widget.doctor}',
+                                  style: GoogleFonts.nunitoSans(
+                                    fontSize: 14,
+                                    color: AppColors.textSecondary,
+                                  ),
                                 ),
-                                const SizedBox(width: 20),
+                                const SizedBox(height: 16),
+                                // Engagement Metrics
                                 Row(
                                   children: [
-                                    Icon(
-                                      Icons.access_time,
-                                      size: 18,
-                                      color: AppColors.textSecondary,
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.visibility,
+                                          size: 18,
+                                          color: AppColors.textSecondary,
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          widget.views,
+                                          style: GoogleFonts.nunitoSans(
+                                            fontSize: 14,
+                                            color: AppColors.textSecondary,
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      widget.duration,
-                                      style: GoogleFonts.nunitoSans(
-                                        fontSize: 14,
-                                        color: AppColors.textSecondary,
-                                      ),
+                                    const SizedBox(width: 20),
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.thumb_up,
+                                          size: 18,
+                                          color: AppColors.textSecondary,
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          widget.likes,
+                                          style: GoogleFonts.nunitoSans(
+                                            fontSize: 14,
+                                            color: AppColors.textSecondary,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(width: 20),
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.access_time,
+                                          size: 18,
+                                          color: AppColors.textSecondary,
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          widget.duration,
+                                          style: GoogleFonts.nunitoSans(
+                                            fontSize: 14,
+                                            color: AppColors.textSecondary,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ],
                                 ),
                               ],
                             ),
-                          ],
-                        ),
-                      ),
-                    ],
+                          ),
+                      ],
+                    ),
                   ),
-                ),
     );
   }
 }

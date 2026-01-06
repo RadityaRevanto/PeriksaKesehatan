@@ -14,6 +14,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<RegisterEvent>(_onRegister);
     on<LogoutEvent>(_onLogout);
     on<CheckAuthStatusEvent>(_onCheckAuthStatus);
+    on<ResetAuthStateEvent>(_onResetAuthState);
   }
 
   /// Handle login event
@@ -108,6 +109,14 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     } else {
       emit(const AuthUnauthenticated());
     }
+  }
+
+  /// Handle reset auth state event
+  void _onResetAuthState(
+    ResetAuthStateEvent event,
+    Emitter<AuthState> emit,
+  ) {
+    emit(const AuthInitial());
   }
 }
 
