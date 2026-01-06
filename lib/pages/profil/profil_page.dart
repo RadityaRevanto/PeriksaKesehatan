@@ -8,6 +8,8 @@ import 'package:periksa_kesehatan/pages/profil/edit_profil_page.dart';
 import 'package:periksa_kesehatan/presentation/bloc/auth/auth_bloc.dart';
 import 'package:periksa_kesehatan/presentation/bloc/auth/auth_event.dart';
 import 'package:periksa_kesehatan/presentation/bloc/auth/auth_state.dart';
+import 'package:periksa_kesehatan/presentation/bloc/health/health_bloc.dart';
+import 'package:periksa_kesehatan/presentation/bloc/health/health_event.dart';
 import 'package:periksa_kesehatan/presentation/bloc/personal_info/personal_info_bloc.dart';
 import 'package:periksa_kesehatan/presentation/bloc/personal_info/personal_info_event.dart';
 import 'package:periksa_kesehatan/presentation/bloc/personal_info/personal_info_state.dart';
@@ -21,17 +23,17 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> {
   // Controllers for edit form
-  final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController(text: "Siti Rahmawati");
-  final _birthDateController = TextEditingController(text: "15 Januari 1973");
-  final _phoneController = TextEditingController(text: "+62 812-3456-7890");
-  final _addressController = TextEditingController(text: "Jl. Merdeka No. 123, Jakarta");
-  DateTime? _selectedDate = DateTime(1973, 1, 15);
+  final _nameController = TextEditingController();
+  final _birthDateController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _addressController = TextEditingController();
+  DateTime? _selectedDate;
 
   @override
   void initState() {
     super.initState();
     _loadPersonalInfo();
+    _loadHealthHistory();
   }
 
   void _loadPersonalInfo() {
@@ -39,6 +41,10 @@ class _ProfilePageState extends State<ProfilePage> {
     if (token != null) {
       context.read<PersonalInfoBloc>().add(LoadPersonalInfo(token));
     }
+  }
+
+  void _loadHealthHistory() {
+    context.read<HealthBloc>().add(const FetchHealthHistoryEvent());
   }
 
   @override
@@ -79,10 +85,10 @@ class _ProfilePageState extends State<ProfilePage> {
               // Update controllers with loaded data
               if (state.personalInfo != null) {
                 setState(() {
-                  _nameController.text = state.personalInfo!.name ?? "Siti Rahmawati";
-                  _birthDateController.text = state.personalInfo!.birthDate ?? "15 Januari 1973";
-                  _phoneController.text = state.personalInfo!.phone ?? "+62 812-3456-7890";
-                  _addressController.text = state.personalInfo!.address ?? "Jl. Merdeka No. 123, Jakarta";
+                  _nameController.text = state.personalInfo!.name ?? "-";
+                  _birthDateController.text = state.personalInfo!.birthDate ?? "-";
+                  _phoneController.text = state.personalInfo!.phone ?? "-";
+                  _addressController.text = state.personalInfo!.address ?? "-";
                   // Parse birth date if needed
                   // _selectedDate = ...
                 });
@@ -156,83 +162,113 @@ class _ProfilePageState extends State<ProfilePage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                "Profil Saya",
-                style: GoogleFonts.nunitoSans(
-                  color: Colors.white,
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 0.5,
-                ),
-              ),
-              Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () {},
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(Icons.settings, color: Colors.white, size: 22),
-                  ),
-                ),
-              ),
             ],
           ),
           const SizedBox(height: 30),
-          Row(
-            children: [
-              // Avatar dengan border modern
-              Container(
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 3),
-                ),
-                child: const CircleAvatar(
-                  radius: 38,
-                  backgroundImage: NetworkImage('https://i.pravatar.cc/150?u=siti'),
-                ),
-              ),
-              const SizedBox(width: 20),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "Ibu Siti",
-                      style: GoogleFonts.nunitoSans(
-                        color: Colors.white,
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.3,
+          BlocBuilder<PersonalInfoBloc, PersonalInfoState>(
+            builder: (context, personalInfoState) {
+              return BlocBuilder<AuthBloc, AuthState>(
+                builder: (context, authState) {
+                  // Get name from PersonalInfo or Auth/Storage
+                  String displayName = "-";
+                  if (personalInfoState is PersonalInfoLoaded && 
+                      personalInfoState.personalInfo?.name != null &&
+                      personalInfoState.personalInfo!.name!.isNotEmpty) {
+                    displayName = personalInfoState.personalInfo!.name!;
+                  } else if (authState is AuthAuthenticated) {
+                    displayName = authState.name;
+                  } else {
+                    final storedName = StorageService.instance.getUserName();
+                    if (storedName != null && storedName.isNotEmpty) {
+                      displayName = storedName;
+                    }
+                  }
+
+                  // Get email from Auth or Storage
+                  String displayEmail = "-";
+                  if (authState is AuthAuthenticated) {
+                    displayEmail = authState.email;
+                  } else {
+                    final storedEmail = StorageService.instance.getUserEmail();
+                    if (storedEmail != null && storedEmail.isNotEmpty) {
+                      displayEmail = storedEmail;
+                    }
+                  }
+
+                  // Get photo from PersonalInfo
+                  String? photoUrl;
+                  if (personalInfoState is PersonalInfoLoaded && 
+                      personalInfoState.personalInfo?.photoUrl != null &&
+                      personalInfoState.personalInfo!.photoUrl!.isNotEmpty) {
+                    photoUrl = personalInfoState.personalInfo!.photoUrl;
+                  }
+
+                  return Row(
+                    children: [
+                      // Avatar dengan border modern
+                      Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 3),
+                        ),
+                        child: CircleAvatar(
+                          radius: 38,
+                          backgroundImage: photoUrl != null
+                              ? NetworkImage(photoUrl)
+                              : null,
+                          child: photoUrl == null
+                              ? const Icon(
+                                  Icons.person,
+                                  size: 40,
+                                  color: Colors.white,
+                                )
+                              : null,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.email_outlined,
-                          size: 16,
-                          color: Colors.white.withOpacity(0.9),
+                      const SizedBox(width: 20),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              displayName,
+                              style: GoogleFonts.nunitoSans(
+                                color: Colors.white,
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.3,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.email_outlined,
+                                  size: 16,
+                                  color: Colors.white.withOpacity(0.9),
+                                ),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    displayEmail,
+                                    style: GoogleFonts.nunitoSans(
+                                      color: Colors.white.withOpacity(0.9),
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 6),
-                        Text(
-                          "sitirahmawati@email.com",
-                          style: GoogleFonts.nunitoSans(
-                            color: Colors.white.withOpacity(0.9),
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
+                      ),
+                    ],
+                  );
+                },
+              );
+            },
           ),
         ],
       ),
@@ -240,31 +276,57 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _buildStatsCard() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 0),
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
-            spreadRadius: 0,
+    return BlocBuilder<PersonalInfoBloc, PersonalInfoState>(
+      builder: (context, personalInfoState) {
+        // Get weight, height, and age from profile API response
+        String weightValue = "-";
+        if (personalInfoState is PersonalInfoLoaded && 
+            personalInfoState.personalInfo?.weight != null &&
+            personalInfoState.personalInfo!.weight! > 0) {
+          weightValue = personalInfoState.personalInfo!.weight!.toStringAsFixed(0);
+        }
+
+        String heightValue = "-";
+        if (personalInfoState is PersonalInfoLoaded && 
+            personalInfoState.personalInfo?.height != null &&
+            personalInfoState.personalInfo!.height! > 0) {
+          heightValue = personalInfoState.personalInfo!.height!.toStringAsFixed(0);
+        }
+
+        String ageValue = "-";
+        if (personalInfoState is PersonalInfoLoaded && 
+            personalInfoState.personalInfo?.age != null &&
+            personalInfoState.personalInfo!.age! > 0) {
+          ageValue = personalInfoState.personalInfo!.age!.toString();
+        }
+
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 0),
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.08),
+                blurRadius: 20,
+                offset: const Offset(0, 4),
+                spreadRadius: 0,
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _statItem("65", "kg", Icons.monitor_weight_outlined, AppColors.primary),
-          _buildStatDivider(),
-          _statItem("158", "cm", Icons.height_outlined, AppColors.primaryLight),
-          _buildStatDivider(),
-          _statItem("52", "tahun", Icons.cake_outlined, AppColors.primaryDark),
-        ],
-      ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _statItem(weightValue, "kg", Icons.monitor_weight_outlined, AppColors.primary),
+              _buildStatDivider(),
+              _statItem(heightValue, "cm", Icons.height_outlined, AppColors.primaryLight),
+              _buildStatDivider(),
+              _statItem(ageValue, "tahun", Icons.cake_outlined, AppColors.primaryDark),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -339,13 +401,13 @@ class _ProfilePageState extends State<ProfilePage> {
       ),
       child: Column(
         children: [
-          _infoTile(Icons.person, "Nama Lengkap", _nameController.text),
+          _infoTile(Icons.person, "Nama Lengkap", _nameController.text.isEmpty ? "-" : _nameController.text),
           _buildDivider(),
-          _infoTile(Icons.calendar_today, "Tanggal Lahir", _birthDateController.text),
+          _infoTile(Icons.calendar_today, "Tanggal Lahir", _birthDateController.text.isEmpty ? "-" : _birthDateController.text),
           _buildDivider(),
-          _infoTile(Icons.phone, "Nomor Telepon", _phoneController.text),
+          _infoTile(Icons.phone, "Nomor Telepon", _phoneController.text.isEmpty ? "-" : _phoneController.text),
           _buildDivider(),
-          _infoTile(Icons.location_on, "Alamat", _addressController.text, isLast: true),
+          _infoTile(Icons.location_on, "Alamat", _addressController.text.isEmpty ? "-" : _addressController.text, isLast: true),
         ],
       ),
     );
@@ -384,6 +446,16 @@ class _ProfilePageState extends State<ProfilePage> {
       color: Colors.transparent,
       child: InkWell(
         onTap: () async {
+          // Cek apakah profil sudah ada dengan melihat state PersonalInfoBloc
+          // Jika personalInfo != null, berarti profil sudah ada di database
+          bool hasExistingProfile = false;
+          final personalInfoState = context.read<PersonalInfoBloc>().state;
+          if (personalInfoState is PersonalInfoLoaded) {
+            // Jika personalInfo tidak null, berarti sudah ada record di database
+            // Gunakan PUT untuk update. Jika null, berarti belum ada, gunakan POST untuk create
+            hasExistingProfile = personalInfoState.personalInfo != null;
+          }
+          
           final result = await Navigator.push(
             context,
             MaterialPageRoute(
@@ -393,6 +465,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 initialPhone: _phoneController.text,
                 initialAddress: _addressController.text,
                 initialSelectedDate: _selectedDate,
+                hasExistingProfile: hasExistingProfile,
               ),
             ),
           );
@@ -470,62 +543,6 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _buildHealthCard(String title, String target, double progress, String label, Color color) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(15),
-          border: Border.all(color: Colors.grey.shade200)
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                title,
-                style: GoogleFonts.nunitoSans(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              Text(
-                "Edit",
-                style: GoogleFonts.nunitoSans(
-                  color: AppColors.authPrimary,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-          Text(
-            "Target: $target",
-            style: GoogleFonts.nunitoSans(
-              color: Colors.grey,
-              fontSize: 12,
-            ),
-          ),
-          const SizedBox(height: 10),
-          LinearProgressIndicator(
-              value: progress,
-              color: color,
-              backgroundColor: Colors.grey.shade200,
-              borderRadius: BorderRadius.circular(5)
-          ),
-          const SizedBox(height: 5),
-          Text(
-            label,
-            style: GoogleFonts.nunitoSans(
-              fontSize: 11,
-              color: Colors.grey,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildLogoutButton() {
     return Padding(

@@ -10,7 +10,7 @@ class PersonalInfoRemoteDatasource {
   Future<PersonalInfoModel?> getPersonalInfo(String token) async {
     try {
       final response = await apiClient.get(
-        '/profile/personal-info',
+        '/profile',
         options: Options(
           headers: {
             'Authorization': 'Bearer $token',
@@ -37,7 +37,7 @@ class PersonalInfoRemoteDatasource {
   ) async {
     try {
       final response = await apiClient.put(
-        '/profile/personal-info',
+        '/profile',
         data: personalInfo.toJson(),
         options: Options(
           headers: {
@@ -50,6 +50,12 @@ class PersonalInfoRemoteDatasource {
         return PersonalInfoModel.fromJson(response.data['data']);
       }
       throw Exception('Failed to update personal info');
+    } on DioException catch (e) {
+      // Jika 404 (profil belum ada), throw exception dengan message khusus
+      if (e.response?.statusCode == 404) {
+        throw Exception('Profile not found, need to create first');
+      }
+      rethrow;
     } catch (e) {
       rethrow;
     }
@@ -60,9 +66,10 @@ class PersonalInfoRemoteDatasource {
     PersonalInfoModel personalInfo,
   ) async {
     try {
+      // Gunakan toJsonForCreate() untuk memastikan name dan birth_date selalu ada
       final response = await apiClient.post(
-        '/profile/personal-info',
-        data: personalInfo.toJson(),
+        '/profile',
+        data: personalInfo.toJsonForCreate(),
         options: Options(
           headers: {
             'Authorization': 'Bearer $token',
@@ -74,6 +81,15 @@ class PersonalInfoRemoteDatasource {
         return PersonalInfoModel.fromJson(response.data['data']);
       }
       throw Exception('Failed to create personal info');
+    } on DioException catch (e) {
+      // Jika 409 (conflict) atau 400 dengan message profil sudah ada, throw exception khusus
+      if (e.response?.statusCode == 409 || 
+          (e.response?.statusCode == 400 && 
+           (e.response?.data?['message']?.toString().toLowerCase().contains('sudah ada') == true ||
+            e.response?.data?['message']?.toString().toLowerCase().contains('already exists') == true))) {
+        throw Exception('Profile already exists');
+      }
+      rethrow;
     } catch (e) {
       rethrow;
     }

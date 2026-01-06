@@ -9,8 +9,8 @@ class ApiEndpoints {
   static const String logout = '/auth/logout';
   
   // User endpoints
-  static const String profile = '/user/profile';
-  static const String updateProfile = '/user/profile';
+  static const String profile = '/profile';
+  static const String updateProfile = '/profile';
   
   // Health endpoints
   static const String saveHealthData = '/health/data';
