@@ -13,6 +13,7 @@ class HealthBloc extends Bloc<HealthEvent, HealthState> {
     on<SaveHealthDataEvent>(_onSaveHealthData);
     on<FetchHealthDataEvent>(_onFetchHealthData);
     on<FetchHealthHistoryEvent>(_onFetchHealthHistory);
+    on<FetchHealthAlertsEvent>(_onFetchHealthAlerts);
     on<ResetHealthStateEvent>(_onResetHealthState);
   }
 
@@ -90,6 +91,51 @@ class HealthBloc extends Bloc<HealthEvent, HealthState> {
       );
     } catch (e) {
       emit(HealthError(message: e.toString()));
+    }
+  }
+
+  /// Handle fetch health alerts event
+  Future<void> _onFetchHealthAlerts(
+    FetchHealthAlertsEvent event,
+    Emitter<HealthState> emit,
+  ) async {
+    // Don't emit loading if we already have health data loaded
+    // This prevents the UI from showing dashes while fetching alerts
+    if (state is! HealthDataLoaded) {
+      emit(const HealthLoading());
+    }
+    
+    try {
+      final result = await _healthRepository.checkHealthAlerts();
+
+      result.fold(
+        (failure) {
+          // If we have existing health data, preserve it
+          if (state is HealthDataLoaded) {
+            // Keep the current state, just log the error
+            print('Error fetching alerts: ${failure.message}');
+          } else {
+            emit(HealthError(message: failure.message));
+          }
+        },
+        (alerts) {
+          // If we already have health data loaded, update it with alerts
+          if (state is HealthDataLoaded) {
+            final currentState = state as HealthDataLoaded;
+            emit(currentState.copyWith(alerts: alerts));
+          } else {
+            // If no health data yet, just emit alerts loaded
+            emit(HealthAlertsLoaded(alerts: alerts));
+          }
+        },
+      );
+    } catch (e) {
+      // If we have existing health data, preserve it
+      if (state is HealthDataLoaded) {
+        print('Error fetching alerts: ${e.toString()}');
+      } else {
+        emit(HealthError(message: e.toString()));
+      }
     }
   }
 

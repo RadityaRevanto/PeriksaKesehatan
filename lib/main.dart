@@ -57,14 +57,19 @@ class MyApp extends StatelessWidget {
           builder: (context, state) {
             if (state is AuthAuthenticated) {
               return const BottomNavigation();
-            } else if (state is AuthUnauthenticated) {
+            } else if (state is AuthUnauthenticated || state is AuthError || state is AuthInitial) {
+              // Tampilkan LoginPage untuk unauthenticated, error, atau initial state
               return const LoginPage();
-            } else {
+            } else if (state is AuthLoading) {
+              // Tampilkan loading hanya untuk initial check auth status
               return const Scaffold(
                 body: Center(
                   child: CircularProgressIndicator(),
                 ),
               );
+            } else {
+              // Fallback ke LoginPage
+              return const LoginPage();
             }
           },
         ),

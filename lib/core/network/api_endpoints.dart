@@ -9,13 +9,15 @@ class ApiEndpoints {
   static const String logout = '/auth/logout';
   
   // User endpoints
-  static const String profile = '/user/profile';
-  static const String updateProfile = '/user/profile';
+  static const String profile = '/profile';
+  static const String updateProfile = '/profile';
   
   // Health endpoints
   static const String saveHealthData = '/health/data';
   static const String getHealthData = '/health/data'; // GET request
   static const String getHealthHistory = '/health/history';
+  static const String downloadHealthHistoryPdf = '/health/history/download';
+  static const String checkHealthAlerts = '/health/check-health-alerts';
   
   // Artikel endpoints
   static const String articles = '/articles';

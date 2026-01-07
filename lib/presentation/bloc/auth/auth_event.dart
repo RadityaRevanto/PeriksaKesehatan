@@ -50,3 +50,8 @@ class CheckAuthStatusEvent extends AuthEvent {
   const CheckAuthStatusEvent();
 }
 
+/// Event untuk reset auth state ke initial
+class ResetAuthStateEvent extends AuthEvent {
+  const ResetAuthStateEvent();
+}
+

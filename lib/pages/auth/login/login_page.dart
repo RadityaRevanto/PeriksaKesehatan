@@ -21,12 +21,122 @@ class _LoginPageState extends State<LoginPage> {
   final _passwordController = TextEditingController();
   bool _rememberMe = false;
   bool _obscurePassword = true;
+  String? _lastErrorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    // Cek jika state saat ini adalah AuthError saat halaman pertama kali di-render
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final currentState = context.read<AuthBloc>().state;
+      if (currentState is AuthError && _lastErrorMessage != currentState.message) {
+        _lastErrorMessage = currentState.message;
+        _showErrorDialog(context, currentState.message);
+      }
+    });
+  }
 
   @override
   void dispose() {
     _identifierController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  void _showErrorDialog(BuildContext context, String message) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.black54,
+      builder: (dialogContext) => Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Icon Error
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: AppColors.error.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.error_outline_rounded,
+                  color: AppColors.error,
+                  size: 48,
+                ),
+              ),
+              const SizedBox(height: 20),
+              
+              // Title
+              Text(
+                'Login Gagal',
+                style: GoogleFonts.nunitoSans(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 12),
+              
+              // Message
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.nunitoSans(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w400,
+                  color: AppColors.textSecondary,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 24),
+              
+              // Button
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(dialogContext).pop();
+                    // Reset state ke initial setelah dialog ditutup
+                    if (context.mounted) {
+                      context.read<AuthBloc>().add(const ResetAuthStateEvent());
+                      _lastErrorMessage = null;
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.authPrimary,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: Text(
+                    'OK',
+                    style: GoogleFonts.nunitoSans(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -42,16 +152,21 @@ class _LoginPageState extends State<LoginPage> {
             ),
           );
         } else if (state is AuthError) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.message),
-              backgroundColor: Colors.red,
-            ),
-          );
+          // Cegah dialog muncul berulang untuk error yang sama
+          if (_lastErrorMessage != state.message) {
+            _lastErrorMessage = state.message;
+            // Tampilkan dialog error
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (context.mounted) {
+                _showErrorDialog(context, state.message);
+              }
+            });
+          }
         }
       },
       child: BlocBuilder<AuthBloc, AuthState>(
         builder: (context, state) {
+          // Loading hanya true jika state adalah AuthLoading
           final isLoading = state is AuthLoading;
           
           return Scaffold(

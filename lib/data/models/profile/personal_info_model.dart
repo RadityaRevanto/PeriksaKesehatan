@@ -3,14 +3,20 @@ class PersonalInfoModel {
   final String? birthDate;
   final String? phone;
   final String? address;
-  final String? photo;
+  final String? photoUrl;
+  final double? weight;
+  final double? height;
+  final int? age;
 
   PersonalInfoModel({
     this.name,
     this.birthDate,
     this.phone,
     this.address,
-    this.photo,
+    this.photoUrl,
+    this.weight,
+    this.height,
+    this.age,
   });
 
   factory PersonalInfoModel.fromJson(Map<String, dynamic> json) {
@@ -19,7 +25,10 @@ class PersonalInfoModel {
       birthDate: json['birth_date'] as String?,
       phone: json['phone'] as String?,
       address: json['address'] as String?,
-      photo: json['photo'] as String?,
+      photoUrl: json['photo_url'] as String?,
+      weight: json['weight'] != null ? (json['weight'] as num).toDouble() : null,
+      height: json['height'] != null ? (json['height'] as num).toDouble() : null,
+      age: json['age'] as int?,
     );
   }
 
@@ -29,7 +38,24 @@ class PersonalInfoModel {
       'birth_date': birthDate,
       'phone': phone,
       'address': address,
-      'photo': photo,
+      'photo_url': photoUrl,
+      'weight': weight,
+      'height': height,
+      'age': age,
+    };
+  }
+
+  /// toJson untuk create - memastikan name dan birth_date selalu ada (minimal string kosong)
+  Map<String, dynamic> toJsonForCreate() {
+    return {
+      'name': name ?? '',
+      'birth_date': birthDate ?? '',
+      'phone': phone,
+      'address': address,
+      'photo_url': photoUrl,
+      'weight': weight,
+      'height': height,
+      'age': age,
     };
   }
 }
