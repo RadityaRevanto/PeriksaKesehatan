@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:periksa_kesehatan/data/models/health/health_summary_model.dart';
+import 'package:periksa_kesehatan/data/models/health/health_alert_model.dart';
 import 'package:periksa_kesehatan/domain/entities/health_data.dart';
 
 /// Base class untuk health states
@@ -37,11 +38,26 @@ class HealthSaveSuccess extends HealthState {
 /// Success state ketika data berhasil di-fetch
 class HealthDataLoaded extends HealthState {
   final HealthData? healthData;
+  final HealthAlertsModel? alerts;
 
-  const HealthDataLoaded({required this.healthData});
+  const HealthDataLoaded({
+    required this.healthData,
+    this.alerts,
+  });
 
   @override
-  List<Object?> get props => [healthData];
+  List<Object?> get props => [healthData, alerts];
+  
+  /// Copy with method untuk update alerts tanpa mengubah healthData
+  HealthDataLoaded copyWith({
+    HealthData? healthData,
+    HealthAlertsModel? alerts,
+  }) {
+    return HealthDataLoaded(
+      healthData: healthData ?? this.healthData,
+      alerts: alerts ?? this.alerts,
+    );
+  }
 }
 
 /// Empty state ketika tidak ada data
@@ -57,6 +73,16 @@ class HealthHistoryLoaded extends HealthState {
 
   @override
   List<Object?> get props => [summary];
+}
+
+/// Success state ketika health alerts berhasil di-fetch
+class HealthAlertsLoaded extends HealthState {
+  final HealthAlertsModel? alerts;
+
+  const HealthAlertsLoaded({required this.alerts});
+
+  @override
+  List<Object?> get props => [alerts];
 }
 
 /// Error state

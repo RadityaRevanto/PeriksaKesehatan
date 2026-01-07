@@ -5,6 +5,7 @@ import 'package:periksa_kesehatan/core/network/api_exception.dart';
 import 'package:periksa_kesehatan/core/storage/storage_service.dart';
 import 'package:periksa_kesehatan/data/models/health/health_data_model.dart';
 import 'package:periksa_kesehatan/data/models/health/health_summary_model.dart';
+import 'package:periksa_kesehatan/data/models/health/health_alert_model.dart';
 
 /// Remote data source untuk health data
 abstract class HealthRemoteDataSource {
@@ -12,6 +13,7 @@ abstract class HealthRemoteDataSource {
   Future<HealthDataModel?> getHealthData();
   Future<HealthSummaryModel?> getHealthHistory();
   Future<List<int>> downloadHealthHistoryPdf(String timeRange);
+  Future<HealthAlertsModel?> checkHealthAlerts();
 }
 
 class HealthRemoteDataSourceImpl implements HealthRemoteDataSource {
@@ -236,6 +238,55 @@ class HealthRemoteDataSourceImpl implements HealthRemoteDataSource {
             statusCode: response.statusCode,
           );
         }
+      }
+    } catch (e) {
+      if (e is ApiException) {
+        rethrow;
+      }
+      throw ApiException(
+        message: 'Terjadi kesalahan: ${e.toString()}',
+        statusCode: 500,
+      );
+    }
+  }
+
+  @override
+  Future<HealthAlertsModel?> checkHealthAlerts() async {
+    try {
+      // Get token dari storage
+      final token = await storageService.getToken();
+      if (token == null) {
+        throw ApiException(
+          message: 'Token tidak ditemukan. Silakan login kembali.',
+          statusCode: 401,
+        );
+      }
+
+      final url = Uri.parse('${ApiEndpoints.baseUrl}${ApiEndpoints.checkHealthAlerts}');
+      
+      final response = await client.get(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final jsonResponse = jsonDecode(response.body);
+        
+        // Response memiliki format: { "status": 200, "message": "...", "data": { "alerts": [...] } }
+        if (jsonResponse['data'] != null) {
+          return HealthAlertsModel.fromJson(jsonResponse['data'] as Map<String, dynamic>);
+        }
+        
+        return null;
+      } else {
+        final errorBody = jsonDecode(response.body);
+        throw ApiException(
+          message: errorBody['message'] ?? 'Gagal memeriksa peringatan kesehatan',
+          statusCode: response.statusCode,
+        );
       }
     } catch (e) {
       if (e is ApiException) {

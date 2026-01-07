@@ -11,6 +11,7 @@ import 'package:periksa_kesehatan/presentation/bloc/health/health_bloc.dart';
 import 'package:periksa_kesehatan/presentation/bloc/health/health_event.dart';
 import 'package:periksa_kesehatan/presentation/bloc/health/health_state.dart';
 import 'package:periksa_kesehatan/domain/entities/health_data.dart';
+import 'package:periksa_kesehatan/data/models/health/health_alert_model.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -48,6 +49,9 @@ class _HomePageState extends State<HomePage> {
     // Backend selalu return data terbaru
     // Filtering berdasarkan tanggal dilakukan di UI
     context.read<HealthBloc>().add(const FetchHealthDataEvent());
+    
+    // Fetch health alerts
+    context.read<HealthBloc>().add(const FetchHealthAlertsEvent());
   }
 
   @override
@@ -483,65 +487,90 @@ class _HomePageState extends State<HomePage> {
 
                     const SizedBox(height: 20),
 
-                    InkWell(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => const PeringatanKesehatanPage()),
-                        );
+                    // Warning banner - Dynamic from API
+                    BlocBuilder<HealthBloc, HealthState>(
+                      builder: (context, state) {
+                        // Get alerts from HealthDataLoaded state
+                        HealthAlertsModel? alerts;
+                        
+                        if (state is HealthDataLoaded && state.alerts != null) {
+                          alerts = state.alerts;
+                        } else if (state is HealthAlertsLoaded && state.alerts != null) {
+                          alerts = state.alerts;
+                        }
+                        
+                        // Only show if we have alerts
+                        if (alerts != null && alerts.alerts.isNotEmpty) {
+                          // Get the first alert
+                          final alert = alerts.alerts.first;
+                          
+                          return InkWell(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const PeringatanKesehatanPage(),
+                                ),
+                              );
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: AppColors.warningBg,
+                                borderRadius: BorderRadius.circular(16),
+                                border: const Border(
+                                  left: BorderSide(color: AppColors.warning, width: 4),
+                                ),
+                              ),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.warning,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Icon(
+                                      Icons.warning,
+                                      color: Colors.white,
+                                      size: 20,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Peringatan',
+                                          style: GoogleFonts.nunitoSans(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                            color: Color(0xFF5D4037),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          alert.explanation,
+                                          style: GoogleFonts.nunitoSans(
+                                            fontSize: 14,
+                                            color: Colors.grey[800],
+                                            height: 1.4,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }
+                        
+                        // Don't show warning if no alerts
+                        return const SizedBox.shrink();
                       },
-                      child: Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: AppColors.warningBg,
-                        borderRadius: BorderRadius.circular(16),
-                        border: const Border(
-                          left: BorderSide(color: AppColors.warning, width: 4),
-                        ),
-                      ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: AppColors.warning,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: const Icon(
-                              Icons.warning,
-                              color: Colors.white,
-                              size: 20,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Peringatan',
-                                  style: GoogleFonts.nunitoSans(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xFF5D4037),
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Gula darah Anda sedikit tinggi. Hindari makanan manis dan segera konsultasi dengan dokter jika terus meningkat.',
-                                  style: GoogleFonts.nunitoSans(
-                                    fontSize: 14,
-                                    color: Colors.grey[800],
-                                    height: 1.4,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
                     ),
                     // Warning banner
                     const SizedBox(height: 20),
@@ -728,31 +757,32 @@ class _HomePageState extends State<HomePage> {
 
   String _getBloodPressureStatus(int? systolic, int? diastolic) {
     if (systolic == null || diastolic == null) return 'N/A';
+    if (systolic < 90 || diastolic < 60) return 'Rendah';
     if (systolic < 120 && diastolic < 80) return 'Normal';
-    if (systolic < 130 && diastolic < 80) return 'Elevated';
-    if (systolic < 140 || diastolic < 90) return 'High';
-    return 'Very High';
+    if (systolic < 140 || diastolic < 90) return 'Tinggi';
+    return 'Sangat Tinggi';
   }
 
   Color _getBloodPressureColor(int? systolic, int? diastolic) {
     if (systolic == null || diastolic == null) return Colors.grey;
-    if (systolic < 120 && diastolic < 80) return AppColors.success;
-    if (systolic < 130 && diastolic < 80) return AppColors.warning;
-    return Colors.red;
+    if (systolic < 90 || diastolic < 60) return Colors.blue; // Rendah
+    if (systolic < 120 && diastolic < 80) return AppColors.success; // Normal
+    if (systolic < 140 || diastolic < 90) return AppColors.warning; // Tinggi
+    return Colors.red; // Sangat Tinggi
   }
 
   String _getBloodSugarStatus(int? bloodSugar) {
     if (bloodSugar == null) return 'N/A';
-    if (bloodSugar < 100) return 'Normal';
-    if (bloodSugar < 126) return 'Prediabetes';
-    return 'Diabetes';
+    if (bloodSugar < 70) return 'Rendah';
+    if (bloodSugar <= 140) return 'Normal';
+    return 'Tinggi';
   }
 
   Color _getBloodSugarColor(int? bloodSugar) {
     if (bloodSugar == null) return Colors.grey;
-    if (bloodSugar < 100) return AppColors.success;
-    if (bloodSugar < 126) return AppColors.warning;
-    return Colors.red;
+    if (bloodSugar < 70) return Colors.blue; // Rendah
+    if (bloodSugar <= 140) return AppColors.success; // Normal
+    return Colors.red; // Tinggi
   }
 
 }

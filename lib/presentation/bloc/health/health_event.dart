@@ -33,3 +33,8 @@ class ResetHealthStateEvent extends HealthEvent {
 class FetchHealthHistoryEvent extends HealthEvent {
   const FetchHealthHistoryEvent();
 }
+
+/// Event untuk fetch health alerts
+class FetchHealthAlertsEvent extends HealthEvent {
+  const FetchHealthAlertsEvent();
+}

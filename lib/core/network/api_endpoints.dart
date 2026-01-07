@@ -17,6 +17,7 @@ class ApiEndpoints {
   static const String getHealthData = '/health/data'; // GET request
   static const String getHealthHistory = '/health/history';
   static const String downloadHealthHistoryPdf = '/health/history/download';
+  static const String checkHealthAlerts = '/health/check-health-alerts';
   
   // Artikel endpoints
   static const String articles = '/articles';
