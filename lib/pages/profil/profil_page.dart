@@ -6,6 +6,8 @@ import 'package:periksa_kesehatan/core/storage/storage_service.dart';
 import 'package:periksa_kesehatan/pages/auth/login/login_page.dart';
 import 'package:periksa_kesehatan/pages/profil/edit_profil_page.dart';
 import 'package:periksa_kesehatan/pages/profil/privasi_keamanan_page.dart';
+import 'package:periksa_kesehatan/pages/profil/bantuan_dukungan_page.dart';
+import 'package:periksa_kesehatan/pages/profil/syarat_ketentuan_page.dart';
 import 'package:periksa_kesehatan/presentation/bloc/auth/auth_bloc.dart';
 import 'package:periksa_kesehatan/presentation/bloc/auth/auth_event.dart';
 import 'package:periksa_kesehatan/presentation/bloc/auth/auth_state.dart';
@@ -14,6 +16,7 @@ import 'package:periksa_kesehatan/presentation/bloc/health/health_event.dart';
 import 'package:periksa_kesehatan/presentation/bloc/personal_info/personal_info_bloc.dart';
 import 'package:periksa_kesehatan/presentation/bloc/personal_info/personal_info_event.dart';
 import 'package:periksa_kesehatan/presentation/bloc/personal_info/personal_info_state.dart';
+import 'package:periksa_kesehatan/presentation/bloc/health/health_state.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -279,53 +282,71 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget _buildStatsCard() {
     return BlocBuilder<PersonalInfoBloc, PersonalInfoState>(
       builder: (context, personalInfoState) {
-        // Get weight, height, and age from profile API response
-        String weightValue = "-";
-        if (personalInfoState is PersonalInfoLoaded && 
-            personalInfoState.personalInfo?.weight != null &&
-            personalInfoState.personalInfo!.weight! > 0) {
-          weightValue = personalInfoState.personalInfo!.weight!.toStringAsFixed(0);
-        }
+        return BlocBuilder<HealthBloc, HealthState>(
+          builder: (context, healthState) {
+            // Get weight from Health History (Prioritize this)
+            String weightValue = "-";
+            
+            // Try getting from Health History first
+            if (healthState is HealthHistoryLoaded && 
+                healthState.summary?.weight?.avgWeight != null && 
+                healthState.summary!.weight!.avgWeight > 0) {
+              weightValue = healthState.summary!.weight!.avgWeight.toStringAsFixed(1);
+              // Remove trailing .0 if present for cleaner look
+              if (weightValue.endsWith('.0')) {
+                weightValue = weightValue.substring(0, weightValue.length - 2);
+              }
+            } 
+            // Fallback to Profile Personal Info
+            else if (personalInfoState is PersonalInfoLoaded && 
+                personalInfoState.personalInfo?.weight != null &&
+                personalInfoState.personalInfo!.weight! > 0) {
+              weightValue = personalInfoState.personalInfo!.weight!.toStringAsFixed(0);
+            }
 
-        String heightValue = "-";
-        if (personalInfoState is PersonalInfoLoaded && 
-            personalInfoState.personalInfo?.height != null &&
-            personalInfoState.personalInfo!.height! > 0) {
-          heightValue = personalInfoState.personalInfo!.height!.toStringAsFixed(0);
-        }
+            // Get height from Personal Info (Not available in Health History Summary)
+            String heightValue = "-";
+            if (personalInfoState is PersonalInfoLoaded && 
+                personalInfoState.personalInfo?.height != null &&
+                personalInfoState.personalInfo!.height! > 0) {
+              heightValue = personalInfoState.personalInfo!.height!.toStringAsFixed(0);
+            }
 
-        String ageValue = "-";
-        if (personalInfoState is PersonalInfoLoaded && 
-            personalInfoState.personalInfo?.age != null &&
-            personalInfoState.personalInfo!.age! > 0) {
-          ageValue = personalInfoState.personalInfo!.age!.toString();
-        }
+            // Get age from Personal Info
+            String ageValue = "-";
+            if (personalInfoState is PersonalInfoLoaded && 
+                personalInfoState.personalInfo?.age != null &&
+                personalInfoState.personalInfo!.age! > 0) {
+              ageValue = personalInfoState.personalInfo!.age!.toString();
+            }
 
-        return Container(
-          margin: const EdgeInsets.symmetric(horizontal: 0),
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.08),
-                blurRadius: 20,
-                offset: const Offset(0, 4),
-                spreadRadius: 0,
+            return Container(
+              margin: const EdgeInsets.symmetric(horizontal: 0),
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 20,
+                    offset: const Offset(0, 4),
+                    spreadRadius: 0,
+                  ),
+                ],
               ),
-            ],
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _statItem(weightValue, "kg", Icons.monitor_weight_outlined, AppColors.primary),
-              _buildStatDivider(),
-              _statItem(heightValue, "cm", Icons.height_outlined, AppColors.primaryLight),
-              _buildStatDivider(),
-              _statItem(ageValue, "tahun", Icons.cake_outlined, AppColors.primaryDark),
-            ],
-          ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _statItem(weightValue, "kg", Icons.monitor_weight_outlined, AppColors.primary),
+                  _buildStatDivider(),
+                  _statItem(heightValue, "cm", Icons.height_outlined, AppColors.primaryLight),
+                  _buildStatDivider(),
+                  _statItem(ageValue, "tahun", Icons.cake_outlined, AppColors.primaryDark),
+                ],
+              ),
+            );
+          },
         );
       },
     );
@@ -531,8 +552,21 @@ class _ProfilePageState extends State<ProfilePage> {
                 builder: (context) => const PrivasiKeamananPage(),
               ),
             );
+          } else if (title == "Bantuan & Dukungan") {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const BantuanDukunganPage(),
+              ),
+            );
+          } else if (title == "Syarat & Ketentuan") {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const SyaratKetentuanPage(),
+              ),
+            );
           }
-          // Add other navigation cases here as needed
         },
         borderRadius: BorderRadius.vertical(
           top: isLast ? Radius.zero : Radius.zero,

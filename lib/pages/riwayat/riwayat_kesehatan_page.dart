@@ -587,11 +587,11 @@ class _RiwayatKesehatanPageState extends State<RiwayatKesehatanPage> {
         actions: [
           // Download Button
           Container(
-            margin: const EdgeInsets.only(right: 8),
+            margin: const EdgeInsets.only(right: 20),
             child: Material(
               color: Colors.transparent,
               child: InkWell(
-                onTap: _downloadPdfFromAppBar,
+                onTap: () => _downloadMedicalReport(context),
                 borderRadius: BorderRadius.circular(12),
                 child: Container(
                   padding: const EdgeInsets.all(8),
@@ -601,31 +601,6 @@ class _RiwayatKesehatanPageState extends State<RiwayatKesehatanPage> {
                   ),
                   child: const Icon(
                     Icons.download_rounded,
-                    color: AppColors.primary,
-                    size: 22,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          // Share Button
-          Container(
-            margin: const EdgeInsets.only(right: 12),
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: () {
-                  // TODO: Implementasi share
-                },
-                borderRadius: BorderRadius.circular(12),
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(
-                    Icons.share_rounded,
                     color: AppColors.primary,
                     size: 22,
                   ),
