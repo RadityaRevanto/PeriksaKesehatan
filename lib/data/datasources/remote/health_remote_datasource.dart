@@ -11,7 +11,7 @@ import 'package:periksa_kesehatan/data/models/health/health_alert_model.dart';
 abstract class HealthRemoteDataSource {
   Future<HealthDataModel> saveHealthData(HealthDataModel healthData);
   Future<HealthDataModel?> getHealthData();
-  Future<HealthSummaryModel?> getHealthHistory();
+  Future<HealthSummaryModel?> getHealthHistory({String timeRange = '7Days'});
   Future<List<int>> downloadHealthHistoryPdf(String timeRange);
   Future<HealthAlertsModel?> checkHealthAlerts();
 }
@@ -128,7 +128,7 @@ class HealthRemoteDataSourceImpl implements HealthRemoteDataSource {
   }
 
   @override
-  Future<HealthSummaryModel?> getHealthHistory() async {
+  Future<HealthSummaryModel?> getHealthHistory({String timeRange = '7Days'}) async {
     try {
       // Get token dari storage
       final token = await storageService.getToken();
@@ -152,24 +152,51 @@ class HealthRemoteDataSourceImpl implements HealthRemoteDataSource {
       if (response.statusCode == 200) {
         final jsonResponse = jsonDecode(response.body);
         
-        // Response memiliki format: { "data": { "summary": {...}, "trend_charts": {...}, "reading_history": [...] } }
+        // Response memiliki format: { "data": { "summary": { "7Days": {...}, "30Days": {...}, "90Days": {...} }, "trend_charts": { "blood_pressure": { "7Days": [...], ... } }, "reading_history": { "7Days": [...] } } }
         if (jsonResponse['data'] != null) {
           final data = jsonResponse['data'] as Map<String, dynamic>;
           final Map<String, dynamic> summaryData = {};
           
-          // Parse summary if exists
+          // Parse summary - extract from selected time range key
           if (data['summary'] != null) {
-            summaryData.addAll(data['summary'] as Map<String, dynamic>);
+            final summary = data['summary'] as Map<String, dynamic>;
+            // Extract data from the selected time range key
+            if (summary[timeRange] != null) {
+              summaryData.addAll(summary[timeRange] as Map<String, dynamic>);
+            } else {
+              // If selected time range has no data, throw exception
+              throw ApiException(
+                message: 'Tidak ada data untuk periode ${_getTimeRangeLabel(timeRange)}',
+                statusCode: 404,
+              );
+            }
           }
           
-          // Parse trend_charts if exists
+          // Parse trend_charts - extract selected time range arrays from each metric
           if (data['trend_charts'] != null) {
-            summaryData['trend_charts'] = data['trend_charts'];
+            final trendCharts = data['trend_charts'] as Map<String, dynamic>;
+            final Map<String, dynamic> extractedTrends = {};
+            
+            // For each metric (blood_pressure, blood_sugar, weight, activity)
+            trendCharts.forEach((key, value) {
+              if (value is Map<String, dynamic> && value[timeRange] != null) {
+                // Extract the selected time range array for this metric
+                extractedTrends[key] = value[timeRange];
+              }
+            });
+            
+            if (extractedTrends.isNotEmpty) {
+              summaryData['trend_charts'] = extractedTrends;
+            }
           }
           
-          // Parse reading_history if exists
+          // Parse reading_history - extract from selected time range key
           if (data['reading_history'] != null) {
-            summaryData['reading_history'] = data['reading_history'];
+            final readingHistory = data['reading_history'] as Map<String, dynamic>;
+            // Extract data from the selected time range key
+            if (readingHistory[timeRange] != null) {
+              summaryData['reading_history'] = readingHistory[timeRange];
+            }
           }
           
           if (summaryData.isNotEmpty) {
@@ -193,6 +220,20 @@ class HealthRemoteDataSourceImpl implements HealthRemoteDataSource {
         message: 'Terjadi kesalahan: ${e.toString()}',
         statusCode: 500,
       );
+    }
+  }
+
+  /// Helper method to get readable time range label
+  String _getTimeRangeLabel(String timeRange) {
+    switch (timeRange) {
+      case '7Days':
+        return '7 hari terakhir';
+      case '30Days':
+        return '30 hari terakhir';
+      case '90Days':
+        return '3 bulan terakhir';
+      default:
+        return timeRange;
     }
   }
 

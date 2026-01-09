@@ -6,14 +6,12 @@ class FilterDataSection extends StatelessWidget {
   final String? selectedTimeRange;
   final Function(String) onTimeRangeChanged;
   final VoidCallback onReset;
-  final Function() onCustomDatePicker;
 
   const FilterDataSection({
     super.key,
     required this.selectedTimeRange,
     required this.onTimeRangeChanged,
     required this.onReset,
-    required this.onCustomDatePicker,
   });
 
   @override
@@ -76,7 +74,6 @@ class FilterDataSection extends StatelessWidget {
               _buildTimeRangeChip('7 Hari'),
               _buildTimeRangeChip('30 Hari'),
               _buildTimeRangeChip('3 Bulan'),
-              _buildTimeRangeChip('Custom'),
             ],
           ),
         ],
@@ -87,13 +84,7 @@ class FilterDataSection extends StatelessWidget {
   Widget _buildTimeRangeChip(String label) {
     final isSelected = selectedTimeRange == label;
     return InkWell(
-      onTap: () {
-        if (label == 'Custom') {
-          onCustomDatePicker();
-        } else {
-          onTimeRangeChanged(label);
-        }
-      },
+      onTap: () => onTimeRangeChanged(label),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         decoration: BoxDecoration(

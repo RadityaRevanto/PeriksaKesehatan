@@ -11,6 +11,7 @@ class VideoCard extends StatelessWidget {
   final String likes;
   final Color playButtonColor;
   final VoidCallback? onTap;
+  final String? videoUrl; // Add video URL parameter
 
   const VideoCard({
     super.key,
@@ -22,6 +23,7 @@ class VideoCard extends StatelessWidget {
     required this.likes,
     this.playButtonColor = const Color(0xFF4CAF50),
     this.onTap,
+    this.videoUrl, // Optional video URL
   });
 
   @override
@@ -46,32 +48,57 @@ class VideoCard extends StatelessWidget {
             // Thumbnail Area
             Stack(
               children: [
-                Container(
-                  width: double.infinity,
-                  height: 180,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE8F5E9),
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(16),
-                      topRight: Radius.circular(16),
-                    ),
+                // YouTube Thumbnail or Placeholder
+                ClipRRect(
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(16),
+                    topRight: Radius.circular(16),
                   ),
-                  child: Center(
-                    child: Container(
-                      width: 60,
-                      height: 60,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
+                  child: _buildThumbnail(),
+                ),
+                
+                // Play Button Overlay
+                Positioned.fill(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(16),
+                        topRight: Radius.circular(16),
                       ),
-                      child: Icon(
-                        Icons.play_arrow,
-                        color: playButtonColor,
-                        size: 40,
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.transparent,
+                          Colors.black.withOpacity(0.3),
+                        ],
+                      ),
+                    ),
+                    child: Center(
+                      child: Container(
+                        width: 60,
+                        height: 60,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.2),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Icon(
+                          Icons.play_arrow,
+                          color: playButtonColor,
+                          size: 40,
+                        ),
                       ),
                     ),
                   ),
                 ),
+                
                 // Duration Badge
                 Positioned(
                   top: 12,
@@ -82,7 +109,7 @@ class VideoCard extends StatelessWidget {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.6),
+                      color: Colors.black.withOpacity(0.7),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
@@ -169,6 +196,86 @@ class VideoCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+  
+  /// Extract YouTube video ID from URL
+  String? _extractYouTubeVideoId(String url) {
+    try {
+      url = url.trim();
+      final uri = Uri.parse(url);
+      
+      // Format: https://youtu.be/VIDEO_ID
+      if (uri.host.contains('youtu.be')) {
+        return uri.pathSegments.isNotEmpty ? uri.pathSegments[0] : null;
+      }
+      
+      // Format: https://www.youtube.com/watch?v=VIDEO_ID
+      if (uri.host.contains('youtube.com') || uri.host.contains('m.youtube.com')) {
+        return uri.queryParameters['v'];
+      }
+      
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+  
+  /// Get YouTube thumbnail URL
+  String? _getYouTubeThumbnail(String videoUrl) {
+    final videoId = _extractYouTubeVideoId(videoUrl);
+    if (videoId != null) {
+      return 'https://img.youtube.com/vi/$videoId/hqdefault.jpg';
+    }
+    return null;
+  }
+  
+  /// Build thumbnail widget
+  Widget _buildThumbnail() {
+    if (videoUrl != null && videoUrl!.isNotEmpty) {
+      final thumbnailUrl = _getYouTubeThumbnail(videoUrl!);
+      
+      if (thumbnailUrl != null) {
+        return Image.network(
+          thumbnailUrl,
+          width: double.infinity,
+          height: 180,
+          fit: BoxFit.cover,
+          loadingBuilder: (context, child, loadingProgress) {
+            if (loadingProgress == null) return child;
+            return Container(
+              width: double.infinity,
+              height: 180,
+              color: const Color(0xFFE8F5E9),
+              child: Center(
+                child: CircularProgressIndicator(
+                  value: loadingProgress.expectedTotalBytes != null
+                      ? loadingProgress.cumulativeBytesLoaded /
+                          loadingProgress.expectedTotalBytes!
+                      : null,
+                  color: playButtonColor,
+                ),
+              ),
+            );
+          },
+          errorBuilder: (context, error, stackTrace) {
+            // Fallback to placeholder if thumbnail fails to load
+            return _buildPlaceholder();
+          },
+        );
+      }
+    }
+    
+    // Default placeholder
+    return _buildPlaceholder();
+  }
+  
+  /// Build placeholder thumbnail
+  Widget _buildPlaceholder() {
+    return Container(
+      width: double.infinity,
+      height: 180,
+      color: const Color(0xFFE8F5E9),
     );
   }
 }

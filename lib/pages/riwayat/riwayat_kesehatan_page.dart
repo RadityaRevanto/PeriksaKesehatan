@@ -33,8 +33,8 @@ class _RiwayatKesehatanPageState extends State<RiwayatKesehatanPage> {
   @override
   void initState() {
     super.initState();
-    // Fetch health history on page load
-    context.read<HealthBloc>().add(const FetchHealthHistoryEvent());
+    // Fetch health history on page load with default time range
+    context.read<HealthBloc>().add(FetchHealthHistoryEvent(timeRange: _getTimeRangeForApi()));
   }
 
   void _resetFilters() {
@@ -43,6 +43,8 @@ class _RiwayatKesehatanPageState extends State<RiwayatKesehatanPage> {
       _selectedMetricType = 'Semua';
       _selectedStatus = 'Semua';
     });
+    // Refetch data with default time range
+    context.read<HealthBloc>().add(FetchHealthHistoryEvent(timeRange: _getTimeRangeForApi()));
   }
 
   String _getTimeRangeLabel() {
@@ -53,8 +55,6 @@ class _RiwayatKesehatanPageState extends State<RiwayatKesehatanPage> {
         return '30 hari terakhir';
       case '3 Bulan':
         return '3 bulan terakhir';
-      case 'Custom':
-        return 'Periode kustom';
       default:
         return '7 hari terakhir';
     }
@@ -64,15 +64,13 @@ class _RiwayatKesehatanPageState extends State<RiwayatKesehatanPage> {
   String _getTimeRangeForApi() {
     switch (_selectedTimeRange) {
       case '7 Hari':
-        return '7days';
+        return '7Days';
       case '30 Hari':
-        return '30days';
+        return '30Days';
       case '3 Bulan':
-        return '90days';
-      case 'Custom':
-        return '7days'; // Default untuk custom, bisa disesuaikan
+        return '90Days';
       default:
-        return '7days';
+        return '7Days';
     }
   }
 
@@ -227,35 +225,7 @@ class _RiwayatKesehatanPageState extends State<RiwayatKesehatanPage> {
   }
 
   
-  void _showCustomDatePicker() {
-    showDateRangePicker(
-      context: context,
-      firstDate: DateTime.now().subtract(const Duration(days: 365)),
-      lastDate: DateTime.now(),
-      initialDateRange: DateTimeRange(
-        start: DateTime.now().subtract(const Duration(days: 7)),
-        end: DateTime.now(),
-      ),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: AppColors.primary,
-              onPrimary: Colors.white,
-              onSurface: AppColors.textPrimary,
-            ),
-          ),
-          child: child!,
-        );
-      },
-    ).then((dateRange) {
-      if (dateRange != null) {
-        setState(() {
-          _selectedTimeRange = 'Custom';
-        });
-      }
-    });
-  }
+
 
   void _showReadingNotesFilterDialog() {
     // Simpan nilai sementara untuk dialog
@@ -617,11 +587,11 @@ class _RiwayatKesehatanPageState extends State<RiwayatKesehatanPage> {
         actions: [
           // Download Button
           Container(
-            margin: const EdgeInsets.only(right: 8),
+            margin: const EdgeInsets.only(right: 20),
             child: Material(
               color: Colors.transparent,
               child: InkWell(
-                onTap: _downloadPdfFromAppBar,
+                onTap: () => _downloadMedicalReport(context),
                 borderRadius: BorderRadius.circular(12),
                 child: Container(
                   padding: const EdgeInsets.all(8),
@@ -638,152 +608,178 @@ class _RiwayatKesehatanPageState extends State<RiwayatKesehatanPage> {
               ),
             ),
           ),
-          // Share Button
-          Container(
-            margin: const EdgeInsets.only(right: 12),
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: () {
-                  // TODO: Implementasi share
-                },
-                borderRadius: BorderRadius.circular(12),
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(
-                    Icons.share_rounded,
-                    color: AppColors.primary,
-                    size: 22,
-                  ),
-                ),
-              ),
-            ),
-          ),
         ],
       ),
-      body: SingleChildScrollView(
-        physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            FilterDataSection(
-              selectedTimeRange: _selectedTimeRange,
-              onTimeRangeChanged: (value) {
-                setState(() {
-                  _selectedTimeRange = value;
-                });
-              },
-              onReset: _resetFilters,
-              onCustomDatePicker: _showCustomDatePicker,
-            ),
-            const SizedBox(height: 20),
-            
-            RingkasanStatistikSection(
-              timeRangeLabel: _getTimeRangeLabel(),
-            ),
-            const SizedBox(height: 20),
-            
-            const GrafikTrenSection(),
-            const SizedBox(height: 20),
-            
-            BlocBuilder<HealthBloc, HealthState>(
-              builder: (context, state) {
-                if (state is HealthLoading) {
-                  return const Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(20),
-                      child: CircularProgressIndicator(),
-                    ),
-                  );
-                }
-                
-                if (state is HealthError) {
-                  return Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Center(
-                      child: Text(
-                        'Error: ${state.message}',
-                        style: GoogleFonts.nunitoSans(
-                          fontSize: 14,
-                          color: AppColors.error,
+      body: BlocListener<HealthBloc, HealthState>(
+        listener: (context, state) {
+          // Show snackbar when there's an error (including no data for period)
+          if (state is HealthError) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  state.message,
+                  style: GoogleFonts.nunitoSans(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
+                backgroundColor: AppColors.error,
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                margin: const EdgeInsets.all(16),
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          }
+        },
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              FilterDataSection(
+                selectedTimeRange: _selectedTimeRange,
+                onTimeRangeChanged: (value) {
+                  setState(() {
+                    _selectedTimeRange = value;
+                  });
+                  // Fetch new data when time range changes
+                  context.read<HealthBloc>().add(FetchHealthHistoryEvent(timeRange: _getTimeRangeForApi()));
+                },
+                onReset: _resetFilters,
+              ),
+              const SizedBox(height: 20),
+              
+              RingkasanStatistikSection(
+                timeRangeLabel: _getTimeRangeLabel(),
+              ),
+              const SizedBox(height: 20),
+              
+              const GrafikTrenSection(),
+              const SizedBox(height: 20),
+              
+              BlocBuilder<HealthBloc, HealthState>(
+                builder: (context, state) {
+                  if (state is HealthLoading) {
+                    return const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(20),
+                        child: CircularProgressIndicator(),
+                      ),
+                    );
+                  }
+                  
+                  if (state is HealthError) {
+                    return Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.info_outline,
+                              size: 48,
+                              color: AppColors.textSecondary.withOpacity(0.5),
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              state.message,
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.nunitoSans(
+                                fontSize: 14,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ),
-                  );
-                }
-                
-                List<Map<String, dynamic>> readingNotes = [];
-                if (state is HealthHistoryLoaded && state.summary?.readingHistory != null) {
-                  readingNotes = _transformReadingHistory(state.summary!.readingHistory);
-                }
-                
-                // Filter reading notes based on selected metric type and status
-                final filteredReadingNotes = _filterReadingNotesByMetricType(readingNotes);
-                
-                if (filteredReadingNotes.isEmpty) {
-                  return Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Center(
-                      child: Text(
-                        readingNotes.isEmpty
-                            ? 'Tidak ada catatan pembacaan'
-                            : 'Tidak ada catatan untuk jenis metrik yang dipilih',
-                        style: GoogleFonts.nunitoSans(
-                          fontSize: 14,
-                          color: AppColors.textSecondary,
+                    );
+                  }
+                  
+                  List<Map<String, dynamic>> readingNotes = [];
+                  if (state is HealthHistoryLoaded && state.summary?.readingHistory != null) {
+                    readingNotes = _transformReadingHistory(state.summary!.readingHistory);
+                  }
+                  
+                  // Filter reading notes based on selected metric type and status
+                  final filteredReadingNotes = _filterReadingNotesByMetricType(readingNotes);
+                  
+                  if (filteredReadingNotes.isEmpty) {
+                    return Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.description_outlined,
+                              size: 48,
+                              color: AppColors.textSecondary.withOpacity(0.5),
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              readingNotes.isEmpty
+                                  ? 'Tidak ada catatan pembacaan untuk ${_getTimeRangeLabel()}'
+                                  : 'Tidak ada catatan untuk jenis metrik yang dipilih',
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.nunitoSans(
+                                fontSize: 14,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ),
+                    );
+                  }
+                  
+                  final hasActiveFilters = 
+                      (_selectedMetricType != null && _selectedMetricType != 'Semua') ||
+                      (_selectedStatus != null && _selectedStatus != 'Semua');
+                  
+                  return CatatanPembacaanSection(
+                    readingNotes: filteredReadingNotes,
+                    onFilterTap: _showReadingNotesFilterDialog,
+                    hasActiveFilters: hasActiveFilters,
                   );
-                }
-                
-                final hasActiveFilters = 
-                    (_selectedMetricType != null && _selectedMetricType != 'Semua') ||
-                    (_selectedStatus != null && _selectedStatus != 'Semua');
-                
-                return CatatanPembacaanSection(
-                  readingNotes: filteredReadingNotes,
-                  onFilterTap: _showReadingNotesFilterDialog,
-                  hasActiveFilters: hasActiveFilters,
-                );
-              },
-            ),
-            const SizedBox(height: 20),
-            
-            InformasiMedisSection(
-              onDownloadTap: () => _downloadMedicalReport(context),
-            ),
-            
-            const SizedBox(height: 20), // Extra spacing at bottom
-          ],
+                },
+              ),
+              const SizedBox(height: 20),
+              
+              InformasiMedisSection(
+                onDownloadTap: () => _downloadMedicalReport(context),
+              ),
+              
+              const SizedBox(height: 20), // Extra spacing at bottom
+            ],
+          ),
         ),
       ),
     );

@@ -7,6 +7,7 @@ import 'package:periksa_kesehatan/pages/peringatan-kesehatan/widgets/info_card.d
 import 'package:periksa_kesehatan/pages/peringatan-kesehatan/widgets/action_card.dart';
 import 'package:periksa_kesehatan/pages/peringatan-kesehatan/widgets/puskesmas_card.dart';
 import 'package:periksa_kesehatan/services/maps_service.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class AlertDetailPage extends StatefulWidget {
   final HealthAlert alert;
@@ -208,79 +209,6 @@ class _AlertDetailPageState extends State<AlertDetailPage> with SingleTickerProv
                 
                 // Tab 5: Video Edukasi
                 _buildVideoTab(),
-              ],
-            ),
-          ),
-          
-          // Bottom Actions
-          Container(
-            color: Colors.white,
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              children: [
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      // TODO: Implementasi share data dengan dokter
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      elevation: 0,
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(
-                          Icons.share,
-                          color: Colors.white,
-                          size: 20,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Bagikan dengan Dokter',
-                          style: GoogleFonts.nunitoSans(
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                    },
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      side: BorderSide(
-                        color: Colors.grey.withOpacity(0.3),
-                        width: 1,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      backgroundColor: Colors.white,
-                    ),
-                    child: Text(
-                      'Tutup',
-                      style: GoogleFonts.nunitoSans(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                  ),
-                ),
               ],
             ),
           ),
@@ -570,6 +498,18 @@ class _AlertDetailPageState extends State<AlertDetailPage> with SingleTickerProv
                   ),
                 ),
                 const SizedBox(height: 20),
+                // Debug: Print education videos
+                Builder(
+                  builder: (context) {
+                    print('=== DEBUG EDUCATION VIDEOS ===');
+                    print('Total videos: ${widget.alert.educationVideos.length}');
+                    for (var i = 0; i < widget.alert.educationVideos.length; i++) {
+                      print('Video $i: ${widget.alert.educationVideos[i]}');
+                    }
+                    print('==============================');
+                    return const SizedBox.shrink();
+                  },
+                ),
                 ...widget.alert.educationVideos.asMap().entries.map((entry) {
                   final index = entry.key;
                   final video = entry.value;
@@ -577,70 +517,202 @@ class _AlertDetailPageState extends State<AlertDetailPage> with SingleTickerProv
                   return Padding(
                     padding: EdgeInsets.only(bottom: index < widget.alert.educationVideos.length - 1 ? 12 : 0),
                     child: InkWell(
-                      onTap: () {
-                        // TODO: Open video URL
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Video: $video'),
-                            duration: const Duration(seconds: 2),
-                          ),
-                        );
+                      onTap: () async {
+                        try {
+                          final Uri videoUri = Uri.parse(video);
+                          if (await canLaunchUrl(videoUri)) {
+                            await launchUrl(
+                              videoUri,
+                              mode: LaunchMode.externalApplication,
+                            );
+                          } else {
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Tidak dapat membuka video: $video'),
+                                  backgroundColor: AppColors.error,
+                                  duration: const Duration(seconds: 3),
+                                ),
+                              );
+                            }
+                          }
+                        } catch (e) {
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Error membuka video: ${e.toString()}'),
+                                backgroundColor: AppColors.error,
+                                duration: const Duration(seconds: 3),
+                              ),
+                            );
+                          }
+                        }
                       },
                       borderRadius: BorderRadius.circular(12),
                       child: Container(
-                        padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: Colors.grey[50],
+                          color: Colors.white,
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
                             color: Colors.grey[200]!,
                           ),
                         ),
-                        child: Row(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: Colors.red.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(8),
+                            // Thumbnail section
+                            ClipRRect(
+                              borderRadius: const BorderRadius.only(
+                                topLeft: Radius.circular(12),
+                                topRight: Radius.circular(12),
                               ),
-                              child: const Icon(
-                                Icons.play_arrow,
-                                color: Colors.red,
-                                size: 24,
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                              child: Stack(
                                 children: [
-                                  Text(
-                                    'Video ${index + 1}',
-                                    style: GoogleFonts.nunitoSans(
-                                      fontSize: 12,
-                                      color: Colors.grey[600],
-                                      fontWeight: FontWeight.w600,
+                                  // YouTube Thumbnail
+                                  _getYouTubeThumbnail(video) != null
+                                      ? Image.network(
+                                          _getYouTubeThumbnail(video)!,
+                                          width: double.infinity,
+                                          height: 180,
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (context, error, stackTrace) {
+                                            // Fallback if thumbnail fails to load
+                                            return Container(
+                                              width: double.infinity,
+                                              height: 180,
+                                              color: Colors.grey[300],
+                                              child: const Center(
+                                                child: Icon(
+                                                  Icons.play_circle_outline,
+                                                  size: 64,
+                                                  color: Colors.grey,
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                        )
+                                      : Container(
+                                          width: double.infinity,
+                                          height: 180,
+                                          color: Colors.grey[300],
+                                          child: const Center(
+                                            child: Icon(
+                                              Icons.play_circle_outline,
+                                              size: 64,
+                                              color: Colors.grey,
+                                            ),
+                                          ),
+                                        ),
+                                  
+                                  // Play button overlay
+                                  Positioned.fill(
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          begin: Alignment.topCenter,
+                                          end: Alignment.bottomCenter,
+                                          colors: [
+                                            Colors.transparent,
+                                            Colors.black.withOpacity(0.3),
+                                          ],
+                                        ),
+                                      ),
+                                      child: Center(
+                                        child: Container(
+                                          padding: const EdgeInsets.all(16),
+                                          decoration: BoxDecoration(
+                                            color: Colors.red.withOpacity(0.9),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: const Icon(
+                                            Icons.play_arrow,
+                                            color: Colors.white,
+                                            size: 40,
+                                          ),
+                                        ),
+                                      ),
                                     ),
                                   ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    video,
-                                    style: GoogleFonts.nunitoSans(
-                                      fontSize: 14,
-                                      color: AppColors.textPrimary,
-                                      fontWeight: FontWeight.w600,
+                                  
+                                  // Duration badge (optional - you can remove if not needed)
+                                  Positioned(
+                                    bottom: 8,
+                                    right: 8,
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.black.withOpacity(0.8),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(
+                                            Icons.play_circle_filled,
+                                            color: Colors.white,
+                                            size: 12,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            'YouTube',
+                                            style: GoogleFonts.nunitoSans(
+                                              fontSize: 10,
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ],
                               ),
                             ),
-                            Icon(
-                              Icons.arrow_forward_ios,
-                              size: 16,
-                              color: Colors.grey[400],
+                            
+                            // Video info section
+                            Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Video Edukasi ${index + 1}',
+                                          style: GoogleFonts.nunitoSans(
+                                            fontSize: 12,
+                                            color: Colors.grey[600],
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          _extractYouTubeVideoId(video) != null
+                                              ? 'Tonton video untuk informasi lebih lanjut'
+                                              : video,
+                                          style: GoogleFonts.nunitoSans(
+                                            fontSize: 14,
+                                            color: AppColors.textPrimary,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Icon(
+                                    Icons.arrow_forward_ios,
+                                    size: 16,
+                                    color: Colors.grey[400],
+                                  ),
+                                ],
+                              ),
                             ),
                           ],
                         ),
@@ -686,6 +758,65 @@ class _AlertDetailPageState extends State<AlertDetailPage> with SingleTickerProv
           ),
       ],
     );
+  }
+  
+  /// Extract YouTube video ID from various YouTube URL formats
+  String? _extractYouTubeVideoId(String url) {
+    try {
+      print('Extracting video ID from: $url');
+      
+      // Remove any whitespace
+      url = url.trim();
+      
+      final uri = Uri.parse(url);
+      
+      // Format: https://youtu.be/VIDEO_ID or https://youtu.be/VIDEO_ID?si=...
+      if (uri.host.contains('youtu.be')) {
+        final videoId = uri.pathSegments.isNotEmpty ? uri.pathSegments[0] : null;
+        print('Extracted from youtu.be: $videoId');
+        return videoId;
+      }
+      
+      // Format: https://www.youtube.com/watch?v=VIDEO_ID
+      // Format: https://youtube.com/watch?v=VIDEO_ID
+      if (uri.host.contains('youtube.com')) {
+        final videoId = uri.queryParameters['v'];
+        print('Extracted from youtube.com: $videoId');
+        return videoId;
+      }
+      
+      // Format: https://m.youtube.com/watch?v=VIDEO_ID (mobile)
+      if (uri.host.contains('m.youtube.com')) {
+        final videoId = uri.queryParameters['v'];
+        print('Extracted from m.youtube.com: $videoId');
+        return videoId;
+      }
+      
+      print('Could not extract video ID - unsupported format');
+      return null;
+    } catch (e) {
+      print('Error extracting video ID: $e');
+      return null;
+    }
+  }
+  
+  /// Get YouTube thumbnail URL from video URL
+  /// Returns high quality thumbnail (hqdefault.jpg)
+  String? _getYouTubeThumbnail(String videoUrl) {
+    final videoId = _extractYouTubeVideoId(videoUrl);
+    if (videoId != null) {
+      // YouTube thumbnail formats:
+      // - maxresdefault.jpg (1920x1080) - not always available
+      // - sddefault.jpg (640x480)
+      // - hqdefault.jpg (480x360) - reliable
+      // - mqdefault.jpg (320x180)
+      // - default.jpg (120x90)
+      final thumbnailUrl = 'https://img.youtube.com/vi/$videoId/hqdefault.jpg';
+      print('Generated thumbnail URL: $thumbnailUrl');
+      return thumbnailUrl;
+    }
+    print('Cannot generate thumbnail - video ID is null');
+    return null;
   }
   
   Color _getColorByStatus(String status) {
