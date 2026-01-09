@@ -70,8 +70,7 @@ class VideoSection extends StatelessWidget {
             language: 'Bahasa Indonesia',
             doctor: 'Dr. Siti Nurhaliza',
             duration: '5:32',
-            views: '2.4k',
-            likes: '156',
+
             playButtonColor: const Color(0xFF4CAF50),
             onTap: () {
               // TODO: Implementasi navigasi ke video player
@@ -83,8 +82,7 @@ class VideoSection extends StatelessWidget {
             language: 'Bahasa Jawa',
             doctor: 'Dr. Budi Santoso',
             duration: '7:15',
-            views: '1.8k',
-            likes: '98',
+
             playButtonColor: const Color(0xFFFF7043),
             onTap: () {
               // TODO: Implementasi navigasi ke video player
@@ -96,8 +94,7 @@ class VideoSection extends StatelessWidget {
             language: 'Bahasa Sunda',
             doctor: 'Dr. Rina Melati',
             duration: '4:48',
-            views: '3.1k',
-            likes: '203',
+
             playButtonColor: const Color(0xFF2196F3),
             onTap: () {
               // TODO: Implementasi navigasi ke video player
