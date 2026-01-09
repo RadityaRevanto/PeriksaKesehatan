@@ -54,4 +54,3 @@ class CheckAuthStatusEvent extends AuthEvent {
 class ResetAuthStateEvent extends AuthEvent {
   const ResetAuthStateEvent();
 }
-

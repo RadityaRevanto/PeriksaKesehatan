@@ -2,16 +2,19 @@
 class VideoModel {
   final String title;
   final String url;
+  final String? duration; // Optional duration field
 
   VideoModel({
     required this.title,
     required this.url,
+    this.duration,
   });
 
   factory VideoModel.fromJson(Map<String, dynamic> json) {
     return VideoModel(
       title: json['title'] as String,
       url: json['url'] as String,
+      duration: json['duration'] as String?, // Parse duration from API
     );
   }
 
@@ -19,6 +22,7 @@ class VideoModel {
     return {
       'title': title,
       'url': url,
+      'duration': duration,
     };
   }
 }

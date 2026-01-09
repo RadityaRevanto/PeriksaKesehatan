@@ -11,7 +11,7 @@ import 'package:periksa_kesehatan/domain/entities/health_data.dart';
 abstract class HealthRepository {
   Future<Either<Failure, HealthData>> saveHealthData(HealthData healthData);
   Future<Either<Failure, HealthData?>> getHealthData();
-  Future<Either<Failure, HealthSummaryModel?>> getHealthHistory();
+  Future<Either<Failure, HealthSummaryModel?>> getHealthHistory({String timeRange = '7Days'});
   Future<Either<Failure, List<int>>> downloadHealthHistoryPdf(String timeRange);
   Future<Either<Failure, HealthAlertsModel?>> checkHealthAlerts();
 }
@@ -61,10 +61,10 @@ class HealthRepositoryImpl implements HealthRepository {
   }
 
   @override
-  Future<Either<Failure, HealthSummaryModel?>> getHealthHistory() async {
+  Future<Either<Failure, HealthSummaryModel?>> getHealthHistory({String timeRange = '7Days'}) async {
     try {
-      // Get from remote
-      final response = await remoteDataSource.getHealthHistory();
+      // Get from remote with time range parameter
+      final response = await remoteDataSource.getHealthHistory(timeRange: timeRange);
       
       return Right(response);
     } on ApiException catch (e) {

@@ -214,7 +214,7 @@ class _GrafikTrenSectionState extends State<GrafikTrenSection> {
               const SizedBox(width: 16),
               _buildLegendItem(
                 color: Colors.grey[300]!,
-                label: 'Normal Range',
+                label: 'Range Normal',
               ),
             ],
           ),
@@ -360,23 +360,7 @@ class BloodPressureChartPainter extends CustomPainter {
       final systolicY = chartHeight - systolicHeight;
       final diastolicY = chartHeight - diastolicHeight;
 
-      paint.color = const Color(0xFF0288D1);
-      paint.style = PaintingStyle.fill;
-      final diastolicBarWidth = barGroupWidth * 0.6;
-      final diastolicBarX = x + (barGroupWidth - diastolicBarWidth) / 2;
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromLTWH(
-            diastolicBarX,
-            diastolicY,
-            diastolicBarWidth,
-            systolicY - diastolicY,
-          ),
-          const Radius.circular(4),
-        ),
-        paint,
-      );
-
+      // Draw Systolic Bar (Green) FIRST (Background)
       paint.color = const Color(0xFF2E7D32);
       paint.style = PaintingStyle.fill;
       final systolicBarWidth = barGroupWidth * 0.8;
@@ -388,6 +372,24 @@ class BloodPressureChartPainter extends CustomPainter {
             systolicY,
             systolicBarWidth,
             chartHeight - systolicY,
+          ),
+          const Radius.circular(4),
+        ),
+        paint,
+      );
+
+      // Draw Diastolic Bar (Blue) SECOND (Foreground)
+      paint.color = const Color(0xFF0288D1);
+      paint.style = PaintingStyle.fill;
+      final diastolicBarWidth = barGroupWidth * 0.6;
+      final diastolicBarX = x + (barGroupWidth - diastolicBarWidth) / 2;
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(
+            diastolicBarX,
+            diastolicY,
+            diastolicBarWidth,
+            chartHeight - diastolicY,
           ),
           const Radius.circular(4),
         ),

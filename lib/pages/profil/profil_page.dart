@@ -5,6 +5,7 @@ import 'package:periksa_kesehatan/core/constants/app_colors.dart';
 import 'package:periksa_kesehatan/core/storage/storage_service.dart';
 import 'package:periksa_kesehatan/pages/auth/login/login_page.dart';
 import 'package:periksa_kesehatan/pages/profil/edit_profil_page.dart';
+import 'package:periksa_kesehatan/pages/profil/privasi_keamanan_page.dart';
 import 'package:periksa_kesehatan/presentation/bloc/auth/auth_bloc.dart';
 import 'package:periksa_kesehatan/presentation/bloc/auth/auth_event.dart';
 import 'package:periksa_kesehatan/presentation/bloc/auth/auth_state.dart';
@@ -518,27 +519,48 @@ class _ProfilePageState extends State<ProfilePage> {
 
 
   Widget _buildSettingTile(IconData icon, String title, {String? trailing, bool isLast = false}) {
-    return ListTile(
-      leading: Icon(icon, color: AppColors.authPrimary),
-      title: Text(
-        title,
-        style: GoogleFonts.nunitoSans(
-          fontSize: 14,
-        ),
-      ),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (trailing != null)
-            Text(
-              trailing,
-              style: GoogleFonts.nunitoSans(
-                color: Colors.grey,
-                fontSize: 12,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          // Navigate based on the title
+          if (title == "Privasi & Keamanan") {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const PrivasiKeamananPage(),
               ),
+            );
+          }
+          // Add other navigation cases here as needed
+        },
+        borderRadius: BorderRadius.vertical(
+          top: isLast ? Radius.zero : Radius.zero,
+          bottom: isLast ? const Radius.circular(15) : Radius.zero,
+        ),
+        child: ListTile(
+          leading: Icon(icon, color: AppColors.authPrimary),
+          title: Text(
+            title,
+            style: GoogleFonts.nunitoSans(
+              fontSize: 14,
             ),
-          const Icon(Icons.chevron_right, color: Colors.grey, size: 20),
-        ],
+          ),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (trailing != null)
+                Text(
+                  trailing,
+                  style: GoogleFonts.nunitoSans(
+                    color: Colors.grey,
+                    fontSize: 12,
+                  ),
+                ),
+              const Icon(Icons.chevron_right, color: Colors.grey, size: 20),
+            ],
+          ),
+        ),
       ),
     );
   }

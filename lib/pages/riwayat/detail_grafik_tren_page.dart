@@ -176,7 +176,7 @@ class _DetailGrafikTrenPageState extends State<DetailGrafikTrenPage> {
             const SizedBox(width: 16),
             _buildLegendItem(
               color: Colors.grey[300]!,
-              label: 'Normal Range',
+              label: 'Range Normal',
             ),
           ],
         );

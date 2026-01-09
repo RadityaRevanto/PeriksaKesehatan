@@ -31,7 +31,12 @@ class ResetHealthStateEvent extends HealthEvent {
 
 /// Event untuk fetch health history summary
 class FetchHealthHistoryEvent extends HealthEvent {
-  const FetchHealthHistoryEvent();
+  final String timeRange;
+  
+  const FetchHealthHistoryEvent({this.timeRange = '7Days'});
+  
+  @override
+  List<Object?> get props => [timeRange];
 }
 
 /// Event untuk fetch health alerts

@@ -83,7 +83,7 @@ class HealthBloc extends Bloc<HealthEvent, HealthState> {
     emit(const HealthLoading());
     
     try {
-      final result = await _healthRepository.getHealthHistory();
+      final result = await _healthRepository.getHealthHistory(timeRange: event.timeRange);
 
       result.fold(
         (failure) => emit(HealthError(message: failure.message)),

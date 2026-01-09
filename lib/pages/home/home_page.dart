@@ -12,6 +12,7 @@ import 'package:periksa_kesehatan/presentation/bloc/health/health_event.dart';
 import 'package:periksa_kesehatan/presentation/bloc/health/health_state.dart';
 import 'package:periksa_kesehatan/domain/entities/health_data.dart';
 import 'package:periksa_kesehatan/data/models/health/health_alert_model.dart';
+import 'package:periksa_kesehatan/data/models/health/health_summary_model.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -23,7 +24,10 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   late DateTime _currentTime;
   late Timer _timer;
-  bool _isManualDate = false; // Flag untuk cek apakah tanggal dipilih manual
+  bool _isManualDate = false;
+  HealthData? _latestHealthData;
+  HealthSummaryModel? _healthHistory;
+
 
   @override
   void initState() {
@@ -46,9 +50,11 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _fetchHealthData() {
-    // Backend selalu return data terbaru
-    // Filtering berdasarkan tanggal dilakukan di UI
+    // Fetch latest health data
     context.read<HealthBloc>().add(const FetchHealthDataEvent());
+    
+    // Fetch health history (for date filtering)
+    context.read<HealthBloc>().add(const FetchHealthHistoryEvent());
     
     // Fetch health alerts
     context.read<HealthBloc>().add(const FetchHealthAlertsEvent());
@@ -266,8 +272,23 @@ class _HomePageState extends State<HomePage> {
                 child: Column(
                   children: [
                     // Health metrics grid with BLoC
-                    BlocBuilder<HealthBloc, HealthState>(
+                    BlocConsumer<HealthBloc, HealthState>(
+                      listener: (context, state) {
+                        // Store data from different states
+                        if (state is HealthDataLoaded) {
+                          setState(() {
+                            _latestHealthData = state.healthData;
+                          });
+                        } else if (state is HealthHistoryLoaded) {
+                          setState(() {
+                            _healthHistory = state.summary;
+                          });
+                        }
+                      },
                       builder: (context, state) {
+                        print('DEBUG: Current state: ${state.runtimeType}, _isManualDate: $_isManualDate');
+                        print('DEBUG: _latestHealthData: $_latestHealthData, _healthHistory: ${_healthHistory != null}');
+                        
                         if (state is HealthLoading) {
                           return const Center(
                             child: Padding(
@@ -275,18 +296,19 @@ class _HomePageState extends State<HomePage> {
                               child: CircularProgressIndicator(),
                             ),
                           );
-                        } else if (state is HealthDataLoaded) {
-                          // Filter di frontend berdasarkan tanggal yang dipilih
-                          final shouldShowData = _shouldShowData(state.healthData);
-                          
-                          if (shouldShowData) {
-                            // Data match dengan tanggal yang dipilih, tampilkan
-                            return _buildHealthMetrics(state.healthData);
-                          } else {
-                            // Data tidak match, tampilkan kosong (placeholder)
-                            return _buildHealthMetrics(null);
-                          }
-                        } else if (state is HealthDataEmpty) {
+                        } 
+                        
+                        // If manual date is selected, use history data
+                        if (_isManualDate) {
+                          return _buildHealthMetricsFromHistoryData();
+                        }
+                        
+                        // Show latest data if not filtering by date
+                        if (_latestHealthData != null) {
+                          return _buildHealthMetrics(_latestHealthData);
+                        }
+                        
+                        if (state is HealthDataEmpty) {
                           return Column(
                             children: [
                               _buildHealthMetrics(null),
@@ -353,7 +375,98 @@ class _HomePageState extends State<HomePage> {
                       },
                     ),
 
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 20),
+
+                    // Warning banner - Dynamic from API (MOVED TO TOP)
+                    BlocBuilder<HealthBloc, HealthState>(
+                      builder: (context, state) {
+                        // Get alerts from HealthDataLoaded state
+                        HealthAlertsModel? alerts;
+                        
+                        if (state is HealthDataLoaded && state.alerts != null) {
+                          alerts = state.alerts;
+                        } else if (state is HealthAlertsLoaded && state.alerts != null) {
+                          alerts = state.alerts;
+                        }
+                        
+                        // Only show if we have alerts
+                        if (alerts != null && alerts.alerts.isNotEmpty) {
+                          // Get the first alert
+                          final alert = alerts.alerts.first;
+                          
+                          return Column(
+                            children: [
+                              InkWell(
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => const PeringatanKesehatanPage(),
+                                    ),
+                                  );
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.warningBg,
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: const Border(
+                                      left: BorderSide(color: AppColors.warning, width: 4),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(8),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.warning,
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: const Icon(
+                                          Icons.warning,
+                                          color: Colors.white,
+                                          size: 20,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              'Peringatan',
+                                              style: GoogleFonts.nunitoSans(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.bold,
+                                                color: Color(0xFF5D4037),
+                                              ),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              alert.explanation,
+                                              style: GoogleFonts.nunitoSans(
+                                                fontSize: 14,
+                                                color: Colors.grey[800],
+                                                height: 1.4,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 20),
+                            ],
+                          );
+                        }
+                        
+                        // Don't show warning if no alerts
+                        return const SizedBox.shrink();
+                      },
+                    ),
 
                     // Tambah Pembacaan Baru Section
                     Container(
@@ -485,94 +598,7 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ),
 
-                    const SizedBox(height: 20),
 
-                    // Warning banner - Dynamic from API
-                    BlocBuilder<HealthBloc, HealthState>(
-                      builder: (context, state) {
-                        // Get alerts from HealthDataLoaded state
-                        HealthAlertsModel? alerts;
-                        
-                        if (state is HealthDataLoaded && state.alerts != null) {
-                          alerts = state.alerts;
-                        } else if (state is HealthAlertsLoaded && state.alerts != null) {
-                          alerts = state.alerts;
-                        }
-                        
-                        // Only show if we have alerts
-                        if (alerts != null && alerts.alerts.isNotEmpty) {
-                          // Get the first alert
-                          final alert = alerts.alerts.first;
-                          
-                          return InkWell(
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const PeringatanKesehatanPage(),
-                                ),
-                              );
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: AppColors.warningBg,
-                                borderRadius: BorderRadius.circular(16),
-                                border: const Border(
-                                  left: BorderSide(color: AppColors.warning, width: 4),
-                                ),
-                              ),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(8),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.warning,
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: const Icon(
-                                      Icons.warning,
-                                      color: Colors.white,
-                                      size: 20,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          'Peringatan',
-                                          style: GoogleFonts.nunitoSans(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold,
-                                            color: Color(0xFF5D4037),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          alert.explanation,
-                                          style: GoogleFonts.nunitoSans(
-                                            fontSize: 14,
-                                            color: Colors.grey[800],
-                                            height: 1.4,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        }
-                        
-                        // Don't show warning if no alerts
-                        return const SizedBox.shrink();
-                      },
-                    ),
-                    // Warning banner
                     const SizedBox(height: 20),
                   ],
                 ),
@@ -600,27 +626,127 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  /// Check apakah data harus ditampilkan berdasarkan filter tanggal
-  bool _shouldShowData(HealthData? data) {
-    if (data == null) return false;
+  /// Build health metrics from history data based on selected date
+  Widget _buildHealthMetricsFromHistoryData() {
+    if (_healthHistory == null || _healthHistory!.readingHistory == null) {
+      return Column(
+        children: [
+          _buildHealthMetrics(null),
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              children: [
+                Icon(
+                  Icons.inbox_outlined,
+                  size: 48,
+                  color: Colors.grey[400],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Tidak ada data untuk tanggal ${_getFormattedDate()}',
+                  style: GoogleFonts.nunitoSans(
+                    color: Colors.grey[600],
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
     
-    // Jika tidak manual date, selalu tampilkan data
-    if (!_isManualDate) return true;
-    
-    // Jika manual date, check apakah tanggal data match dengan tanggal yang dipilih
+    // Filter reading history by selected date
     final selectedDate = DateTime(
       _currentTime.year,
       _currentTime.month,
       _currentTime.day,
     );
     
-    final dataDate = DateTime(
-      data.date.year,
-      data.date.month,
-      data.date.day,
-    );
+    final readings = _healthHistory!.readingHistory!.where((reading) {
+      final readingDate = DateTime(
+        reading.dateTime.year,
+        reading.dateTime.month,
+        reading.dateTime.day,
+      );
+      return readingDate.isAtSameMomentAs(selectedDate);
+    }).toList();
     
-    return dataDate.isAtSameMomentAs(selectedDate);
+    if (readings.isEmpty) {
+      return Column(
+        children: [
+          _buildHealthMetrics(null),
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              children: [
+                Icon(
+                  Icons.inbox_outlined,
+                  size: 48,
+                  color: Colors.grey[400],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Tidak ada data untuk tanggal ${_getFormattedDate()}',
+                  style: GoogleFonts.nunitoSans(
+                    color: Colors.grey[600],
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
+    
+    // Extract data from readings
+    int? systolic;
+    int? diastolic;
+    int? bloodSugar;
+    double? weight;
+    String? activity;
+    DateTime? latestDate;
+    
+    for (var reading in readings) {
+      if (reading.metricType == 'tekanan_darah') {
+        // Parse "130/80 mmHg" format
+        final parts = reading.value.split('/');
+        if (parts.length == 2) {
+          systolic = int.tryParse(parts[0].trim());
+          diastolic = int.tryParse(parts[1].replaceAll(RegExp(r'[^0-9]'), ''));
+        }
+        latestDate = reading.dateTime;
+      } else if (reading.metricType == 'gula_darah') {
+        // Parse "85 mg/dL" format
+        bloodSugar = int.tryParse(reading.value.replaceAll(RegExp(r'[^0-9]'), ''));
+        latestDate ??= reading.dateTime;
+      } else if (reading.metricType == 'berat_badan') {
+        // Parse "90.50 kg" format
+        weight = double.tryParse(reading.value.replaceAll(RegExp(r'[^0-9.]'), ''));
+        latestDate ??= reading.dateTime;
+      } else if (reading.metricType == 'aktivitas' || reading.metricType == 'detak_jantung') {
+        // For now, just show the value
+        activity = reading.value;
+        latestDate ??= reading.dateTime;
+      }
+    }
+    
+    // Create a HealthData object from the extracted values
+    final healthData = latestDate != null ? HealthData(
+      date: latestDate,
+      systolic: systolic,
+      diastolic: diastolic,
+      bloodSugar: bloodSugar,
+      weight: weight,
+      activity: activity,
+    ) : null;
+    
+    return _buildHealthMetrics(healthData);
   }
 
   Widget _buildAddReadingButton({
