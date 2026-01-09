@@ -1,4 +1,5 @@
 import 'package:dartz/dartz.dart';
+import 'dart:io'; // Import SocketException
 import 'package:periksa_kesehatan/core/network/api_exception.dart';
 import 'package:periksa_kesehatan/core/storage/storage_service.dart';
 import 'package:periksa_kesehatan/data/datasources/local/auth_local_datasource.dart';
@@ -60,7 +61,12 @@ class AuthRepositoryImpl implements AuthRepository {
       return Right(user);
     } on ApiException catch (e) {
       return Left(ServerFailure(e.message));
+    } on SocketException {
+      return const Left(NetworkFailure('Tidak ada koneksi internet. Mohon periksa jaringan Anda.'));
     } catch (e) {
+      if (e.toString().contains('SocketException') || e.toString().contains('Network is unreachable')) {
+        return const Left(NetworkFailure('Tidak ada koneksi internet. Mohon periksa jaringan Anda.'));
+      }
       return Left(NetworkFailure(e.toString()));
     }
   }
@@ -91,7 +97,12 @@ class AuthRepositoryImpl implements AuthRepository {
       return Right(user);
     } on ApiException catch (e) {
       return Left(ServerFailure(e.message));
+    } on SocketException {
+      return const Left(NetworkFailure('Tidak ada koneksi internet. Mohon periksa jaringan Anda.'));
     } catch (e) {
+      if (e.toString().contains('SocketException') || e.toString().contains('Network is unreachable')) {
+        return const Left(NetworkFailure('Tidak ada koneksi internet. Mohon periksa jaringan Anda.'));
+      }
       return Left(NetworkFailure(e.toString()));
     }
   }
