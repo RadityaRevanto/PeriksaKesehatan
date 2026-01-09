@@ -1,8 +1,11 @@
+import 'dart:io';
+import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
 import '../../core/constants/app_colors.dart';
+import '../../services/offline_video_service.dart';
 
 class VideoPlayerPage extends StatefulWidget {
   final String videoUrl;
@@ -10,8 +13,7 @@ class VideoPlayerPage extends StatefulWidget {
   final String language;
   final String doctor;
   final String duration;
-  final String views;
-  final String likes;
+
 
   const VideoPlayerPage({
     super.key,
@@ -20,8 +22,7 @@ class VideoPlayerPage extends StatefulWidget {
     required this.language,
     required this.doctor,
     required this.duration,
-    required this.views,
-    required this.likes,
+
   });
 
   @override
@@ -34,6 +35,11 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
   bool _isLoading = true;
   bool _hasError = false;
 
+  double _downloadProgress = 0.0;
+  bool _isDownloading = false;
+  String? _statusMessage;
+  String _errorMessage = '';
+
   @override
   void initState() {
     super.initState();
@@ -42,17 +48,53 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
 
   Future<void> _initializeVideo() async {
     try {
-      // Validasi URL video
       if (widget.videoUrl.isEmpty) {
         throw Exception('URL video tidak valid');
       }
 
-      final uri = Uri.tryParse(widget.videoUrl);
-      if (uri == null || !uri.hasScheme) {
-        throw Exception('Format URL video tidak valid');
+      // 1. Cek jika ini adalah Asset Lokal (bukan URL internet)
+      if (widget.videoUrl.startsWith('assets/')) {
+        _videoPlayerController = VideoPlayerController.asset(widget.videoUrl);
+      } 
+      // 2. Jika URL Internet, gunakan logika Offline-First (Download)
+      else {
+        final offlineService = OfflineVideoService();
+        String? localPath = await offlineService.getLocalVideoPath(widget.videoUrl);
+
+        if (localPath == null) {
+          if (mounted) {
+            setState(() {
+              _isDownloading = true;
+              _statusMessage = 'Mengunduh video...';
+              _errorMessage = '';
+            });
+          }
+
+          localPath = await offlineService.downloadVideo(
+            widget.videoUrl,
+            (received, total) {
+              if (total != -1) {
+                if (mounted) {
+                  setState(() {
+                    _downloadProgress = received / total;
+                  });
+                }
+              }
+            },
+          );
+        }
+
+        if (localPath == null) throw Exception('Gagal mendapatkan video');
+        _videoPlayerController = VideoPlayerController.file(File(localPath));
       }
 
-      _videoPlayerController = VideoPlayerController.networkUrl(uri);
+      // Initialize Controller (sama untuk keduanya)
+      if (mounted) {
+        setState(() {
+          _isDownloading = false;
+          _statusMessage = 'Memuat player...';
+        });
+      }
 
       await _videoPlayerController.initialize();
 
@@ -62,6 +104,7 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
         videoPlayerController: _videoPlayerController,
         autoPlay: true,
         looping: false,
+        fullScreenByDefault: true,
         aspectRatio: 16 / 9,
         showControls: true,
         materialProgressColors: ChewieProgressColors(
@@ -120,7 +163,9 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
       if (mounted) {
         setState(() {
           _isLoading = false;
+          _isDownloading = false;
           _hasError = true;
+          _errorMessage = e.toString();
         });
       }
     }
@@ -130,18 +175,23 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
   void dispose() {
     _videoPlayerController.dispose();
     _chewieController?.dispose();
+    // Reset orientation to portrait when leaving the page
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.black,
+        backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
@@ -149,41 +199,74 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
           style: GoogleFonts.nunitoSans(
             fontSize: 18,
             fontWeight: FontWeight.bold,
-            color: Colors.white,
+            color: AppColors.textPrimary,
           ),
         ),
       ),
-      body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(
-                color: Colors.white,
+      body: _isDownloading
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const CircularProgressIndicator(
+                    color: AppColors.primary,
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    'Mengunduh Video: ${(_downloadProgress * 100).toStringAsFixed(0)}%',
+                    style: GoogleFonts.nunitoSans(
+                      color: AppColors.textPrimary,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 40),
+                    child: LinearProgressIndicator(
+                      value: _downloadProgress,
+                      backgroundColor: Colors.grey[300],
+                      valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+                    ),
+                  ),
+                ],
               ),
             )
+          : _isLoading
+              ? const Center(
+                  child: CircularProgressIndicator(
+                    color: AppColors.primary,
+                  ),
+                )
           : _hasError
               ? Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.error_outline,
-                        color: Colors.white,
+                        color: Colors.red[400],
                         size: 64,
                       ),
                       const SizedBox(height: 16),
                       Text(
                         'Gagal memuat video',
                         style: GoogleFonts.nunitoSans(
-                          color: Colors.white,
+                          color: AppColors.textPrimary,
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       const SizedBox(height: 8),
-                      Text(
-                        'Pastikan koneksi internet Anda stabil',
-                        style: GoogleFonts.nunitoSans(
-                          color: Colors.white70,
-                          fontSize: 14,
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: Text(
+                          _errorMessage.isNotEmpty ? _errorMessage : 'Pastikan koneksi internet Anda stabil',
+                          style: GoogleFonts.nunitoSans(
+                            color: AppColors.textSecondary,
+                            fontSize: 14,
+                          ),
+                          textAlign: TextAlign.center,
                         ),
                       ),
                       const SizedBox(height: 24),
@@ -260,42 +343,7 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
                                 // Engagement Metrics
                                 Row(
                                   children: [
-                                    Row(
-                                      children: [
-                                        Icon(
-                                          Icons.visibility,
-                                          size: 18,
-                                          color: AppColors.textSecondary,
-                                        ),
-                                        const SizedBox(width: 6),
-                                        Text(
-                                          widget.views,
-                                          style: GoogleFonts.nunitoSans(
-                                            fontSize: 14,
-                                            color: AppColors.textSecondary,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(width: 20),
-                                    Row(
-                                      children: [
-                                        Icon(
-                                          Icons.thumb_up,
-                                          size: 18,
-                                          color: AppColors.textSecondary,
-                                        ),
-                                        const SizedBox(width: 6),
-                                        Text(
-                                          widget.likes,
-                                          style: GoogleFonts.nunitoSans(
-                                            fontSize: 14,
-                                            color: AppColors.textSecondary,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(width: 20),
+
                                     Row(
                                       children: [
                                         Icon(

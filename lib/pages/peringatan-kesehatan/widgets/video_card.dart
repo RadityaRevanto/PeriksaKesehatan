@@ -7,11 +7,11 @@ class VideoCard extends StatelessWidget {
   final String language;
   final String doctor;
   final String duration;
-  final String views;
-  final String likes;
+
   final Color playButtonColor;
   final VoidCallback? onTap;
   final String? videoUrl; // Add video URL parameter
+  final String? thumbnailUrl;
 
   const VideoCard({
     super.key,
@@ -19,11 +19,10 @@ class VideoCard extends StatelessWidget {
     required this.language,
     required this.doctor,
     required this.duration,
-    required this.views,
-    required this.likes,
     this.playButtonColor = const Color(0xFF4CAF50),
     this.onTap,
     this.videoUrl, // Optional video URL
+    this.thumbnailUrl,
   });
 
   @override
@@ -149,47 +148,7 @@ class VideoCard extends StatelessWidget {
                       color: AppColors.textSecondary,
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  // Engagement Metrics
-                  Row(
-                    children: [
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.visibility,
-                            size: 16,
-                            color: AppColors.textSecondary,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            views,
-                            style: GoogleFonts.nunitoSans(
-                              fontSize: 13,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(width: 16),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.thumb_up,
-                            size: 16,
-                            color: AppColors.textSecondary,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            likes,
-                            style: GoogleFonts.nunitoSans(
-                              fontSize: 13,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+
                 ],
               ),
             ),
@@ -232,12 +191,51 @@ class VideoCard extends StatelessWidget {
   
   /// Build thumbnail widget
   Widget _buildThumbnail() {
+    // 1. Explicit Thumbnail (highest priority)
+    if (thumbnailUrl != null && thumbnailUrl!.isNotEmpty) {
+      if (thumbnailUrl!.startsWith('assets/')) {
+        return Image.asset(
+          thumbnailUrl!,
+          width: double.infinity,
+          height: 180,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) => _buildPlaceholder(),
+        );
+      } else {
+         return Image.network(
+          thumbnailUrl!,
+          width: double.infinity,
+          height: 180,
+          fit: BoxFit.cover,
+          loadingBuilder: (context, child, loadingProgress) {
+            if (loadingProgress == null) return child;
+            return Container(
+              width: double.infinity,
+              height: 180,
+              color: const Color(0xFFE8F5E9),
+              child: Center(
+                child: CircularProgressIndicator(
+                  value: loadingProgress.expectedTotalBytes != null
+                      ? loadingProgress.cumulativeBytesLoaded /
+                          loadingProgress.expectedTotalBytes!
+                      : null,
+                  color: playButtonColor,
+                ),
+              ),
+            );
+          },
+          errorBuilder: (context, error, stackTrace) => _buildPlaceholder(),
+        );
+      }
+    }
+
+    // 2. Derive from YouTube Video URL
     if (videoUrl != null && videoUrl!.isNotEmpty) {
-      final thumbnailUrl = _getYouTubeThumbnail(videoUrl!);
+      final ytThumbnailUrl = _getYouTubeThumbnail(videoUrl!);
       
-      if (thumbnailUrl != null) {
+      if (ytThumbnailUrl != null) {
         return Image.network(
-          thumbnailUrl,
+          ytThumbnailUrl,
           width: double.infinity,
           height: 180,
           fit: BoxFit.cover,

@@ -353,10 +353,10 @@ class _EdukasiPageState extends State<EdukasiPage> {
             language: 'Bahasa Indonesia',
             doctor: 'Tim Edukasi',
             duration: video.duration ?? '5:00',
-            views: '1.2k',
-            likes: '100',
+
             playButtonColor: colors[index % colors.length],
             videoUrl: video.url,
+            thumbnailUrl: video.thumbnailUrl,
             onTap: () {
               Navigator.push(
                 context,
@@ -367,8 +367,7 @@ class _EdukasiPageState extends State<EdukasiPage> {
                     language: 'Bahasa Indonesia',
                     doctor: 'Tim Edukasi',
                     duration: video.duration ?? '5:00',
-                    views: '1.2k',
-                    likes: '100',
+
                   ),
                 ),
               );

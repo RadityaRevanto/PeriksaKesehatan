@@ -2,6 +2,7 @@ import 'package:get_it/get_it.dart';
 import 'package:http/http.dart' as http;
 import 'package:periksa_kesehatan/core/network/api_client.dart';
 import 'package:periksa_kesehatan/core/storage/storage_service.dart';
+import 'package:periksa_kesehatan/core/database/database_helper.dart';
 import 'package:periksa_kesehatan/data/datasources/local/auth_local_datasource.dart';
 import 'package:periksa_kesehatan/data/datasources/remote/auth_remote_datasource.dart';
 import 'package:periksa_kesehatan/data/datasources/remote/health_remote_datasource.dart';
@@ -29,12 +30,18 @@ Future<void> init() async {
   sl.registerLazySingleton(() => ApiClient());
   sl.registerLazySingleton(() => http.Client());
 
+  // Database
+  sl.registerLazySingleton(() => DatabaseHelper.instance);
+
   // Data Sources
   sl.registerLazySingleton<AuthRemoteDataSource>(
     () => AuthRemoteDataSourceImpl(apiClient: sl()),
   );
   sl.registerLazySingleton<AuthLocalDataSource>(
-    () => AuthLocalDataSourceImpl(storageService: sl()),
+    () => AuthLocalDataSourceImpl(
+      storageService: sl(),
+      databaseHelper: sl(),
+    ),
   );
   sl.registerLazySingleton<HealthRemoteDataSource>(
     () => HealthRemoteDataSourceImpl(
@@ -68,6 +75,7 @@ Future<void> init() async {
   sl.registerLazySingleton<EducationRepository>(
     () => EducationRepositoryImpl(
       remoteDataSource: sl(),
+      databaseHelper: sl(),
     ),
   );
   sl.registerLazySingleton<PersonalInfoRepository>(

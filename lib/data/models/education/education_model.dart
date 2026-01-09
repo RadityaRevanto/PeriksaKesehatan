@@ -3,11 +3,13 @@ class VideoModel {
   final String title;
   final String url;
   final String? duration; // Optional duration field
+  final String? thumbnailUrl;
 
   VideoModel({
     required this.title,
     required this.url,
     this.duration,
+    this.thumbnailUrl,
   });
 
   factory VideoModel.fromJson(Map<String, dynamic> json) {
@@ -15,6 +17,7 @@ class VideoModel {
       title: json['title'] as String,
       url: json['url'] as String,
       duration: json['duration'] as String?, // Parse duration from API
+      thumbnailUrl: json['thumbnail_url'] as String?,
     );
   }
 
@@ -23,6 +26,7 @@ class VideoModel {
       'title': title,
       'url': url,
       'duration': duration,
+      'thumbnail_url': thumbnailUrl,
     };
   }
 }
