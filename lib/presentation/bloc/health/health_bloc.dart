@@ -87,7 +87,14 @@ class HealthBloc extends Bloc<HealthEvent, HealthState> {
 
       result.fold(
         (failure) => emit(HealthError(message: failure.message)),
-        (summary) => emit(HealthHistoryLoaded(summary: summary)),
+        (summary) {
+          // If summary is null, it means no data available (e.g., new user)
+          if (summary == null) {
+            emit(const HealthDataEmpty());
+          } else {
+            emit(HealthHistoryLoaded(summary: summary));
+          }
+        },
       );
     } catch (e) {
       emit(HealthError(message: e.toString()));

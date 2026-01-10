@@ -308,6 +308,7 @@ class _HomePageState extends State<HomePage> {
                           return _buildHealthMetrics(_latestHealthData);
                         }
                         
+                        // Handle empty data state (new users or no data for selected date)
                         if (state is HealthDataEmpty) {
                           return Column(
                             children: [
@@ -349,7 +350,53 @@ class _HomePageState extends State<HomePage> {
                               ),
                             ],
                           );
-                        } else if (state is HealthError) {
+                        } 
+                        
+                        // Handle error state - but only show error UI for actual errors
+                        // (not for "no data" scenarios which are now handled as HealthDataEmpty)
+                        if (state is HealthError) {
+                          // If error is about missing data and we're not in manual date mode,
+                          // show empty state instead of error
+                          if (!_isManualDate && state.message.toLowerCase().contains('tidak ada data')) {
+                            return Column(
+                              children: [
+                                _buildHealthMetrics(null),
+                                Padding(
+                                  padding: const EdgeInsets.all(16.0),
+                                  child: Column(
+                                    children: [
+                                      Icon(
+                                        Icons.inbox_outlined,
+                                        size: 48,
+                                        color: Colors.grey[400],
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        'Belum ada data kesehatan',
+                                        style: GoogleFonts.nunitoSans(
+                                          color: Colors.grey[600],
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        'Mulai tambahkan data kesehatan Anda',
+                                        style: GoogleFonts.nunitoSans(
+                                          color: Colors.grey[500],
+                                          fontSize: 12,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            );
+                          }
+                          
+                          // Show actual error UI for real errors
                           return Center(
                             child: Column(
                               children: [
@@ -370,7 +417,7 @@ class _HomePageState extends State<HomePage> {
                           );
                         }
                         
-                        // Initial or other states
+                        // Initial or other states - show empty metrics
                         return _buildHealthMetrics(null);
                       },
                     ),

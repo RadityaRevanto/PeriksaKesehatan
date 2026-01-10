@@ -238,18 +238,39 @@ class BloodPressureTrend {
   final String date;
   final double systolic;
   final double diastolic;
+  final String? week;
+  final String? startDate;
+  final String? endDate;
+  final String? month;
 
   BloodPressureTrend({
     required this.date,
     required this.systolic,
     required this.diastolic,
+    this.week,
+    this.startDate,
+    this.endDate,
+    this.month,
   });
 
   factory BloodPressureTrend.fromJson(Map<String, dynamic> json) {
+    String label = '';
+    if (json['date'] != null) {
+      label = json['date'] as String;
+    } else if (json['week'] != null) {
+      label = json['week'] as String;
+    } else if (json['month'] != null) {
+      label = json['month'] as String;
+    }
+
     return BloodPressureTrend(
-      date: json['date'] as String,
+      date: label,
       systolic: (json['systolic'] as num).toDouble(),
       diastolic: (json['diastolic'] as num).toDouble(),
+      week: json['week'] as String?,
+      startDate: json['start_date'] as String?,
+      endDate: json['end_date'] as String?,
+      month: json['month'] as String?,
     );
   }
 
@@ -258,6 +279,10 @@ class BloodPressureTrend {
       'date': date,
       'systolic': systolic,
       'diastolic': diastolic,
+      if (week != null) 'week': week,
+      if (startDate != null) 'start_date': startDate,
+      if (endDate != null) 'end_date': endDate,
+      if (month != null) 'month': month,
     };
   }
 }
@@ -265,16 +290,37 @@ class BloodPressureTrend {
 class BloodSugarTrend {
   final String date;
   final double avgValue;
+  final String? week;
+  final String? startDate;
+  final String? endDate;
+  final String? month;
 
   BloodSugarTrend({
     required this.date,
     required this.avgValue,
+    this.week,
+    this.startDate,
+    this.endDate,
+    this.month,
   });
 
   factory BloodSugarTrend.fromJson(Map<String, dynamic> json) {
+    String label = '';
+    if (json['date'] != null) {
+      label = json['date'] as String;
+    } else if (json['week'] != null) {
+      label = json['week'] as String;
+    } else if (json['month'] != null) {
+      label = json['month'] as String;
+    }
+
     return BloodSugarTrend(
-      date: json['date'] as String,
+      date: label,
       avgValue: (json['avg_value'] as num).toDouble(),
+      week: json['week'] as String?,
+      startDate: json['start_date'] as String?,
+      endDate: json['end_date'] as String?,
+      month: json['month'] as String?,
     );
   }
 
@@ -282,6 +328,10 @@ class BloodSugarTrend {
     return {
       'date': date,
       'avg_value': avgValue,
+      if (week != null) 'week': week,
+      if (startDate != null) 'start_date': startDate,
+      if (endDate != null) 'end_date': endDate,
+      if (month != null) 'month': month,
     };
   }
 }
@@ -289,16 +339,37 @@ class BloodSugarTrend {
 class WeightTrend {
   final String date;
   final double weight;
+  final String? week;
+  final String? startDate;
+  final String? endDate;
+  final String? month;
 
   WeightTrend({
     required this.date,
     required this.weight,
+    this.week,
+    this.startDate,
+    this.endDate,
+    this.month,
   });
 
   factory WeightTrend.fromJson(Map<String, dynamic> json) {
+    String label = '';
+    if (json['date'] != null) {
+      label = json['date'] as String;
+    } else if (json['week'] != null) {
+      label = json['week'] as String;
+    } else if (json['month'] != null) {
+      label = json['month'] as String;
+    }
+
     return WeightTrend(
-      date: json['date'] as String,
+      date: label,
       weight: (json['weight'] as num).toDouble(),
+      week: json['week'] as String?,
+      startDate: json['start_date'] as String?,
+      endDate: json['end_date'] as String?,
+      month: json['month'] as String?,
     );
   }
 
@@ -306,6 +377,10 @@ class WeightTrend {
     return {
       'date': date,
       'weight': weight,
+      if (week != null) 'week': week,
+      if (startDate != null) 'start_date': startDate,
+      if (endDate != null) 'end_date': endDate,
+      if (month != null) 'month': month,
     };
   }
 }
@@ -314,18 +389,39 @@ class ActivityTrend {
   final String date;
   final int steps;
   final int calories;
+  final String? week;
+  final String? startDate;
+  final String? endDate;
+  final String? month;
 
   ActivityTrend({
     required this.date,
     required this.steps,
     required this.calories,
+    this.week,
+    this.startDate,
+    this.endDate,
+    this.month,
   });
 
   factory ActivityTrend.fromJson(Map<String, dynamic> json) {
+    String label = '';
+    if (json['date'] != null) {
+      label = json['date'] as String;
+    } else if (json['week'] != null) {
+      label = json['week'] as String;
+    } else if (json['month'] != null) {
+      label = json['month'] as String;
+    }
+
     return ActivityTrend(
-      date: json['date'] as String,
+      date: label,
       steps: json['steps'] as int,
       calories: json['calories'] as int,
+      week: json['week'] as String?,
+      startDate: json['start_date'] as String?,
+      endDate: json['end_date'] as String?,
+      month: json['month'] as String?,
     );
   }
 
@@ -334,6 +430,10 @@ class ActivityTrend {
       'date': date,
       'steps': steps,
       'calories': calories,
+      if (week != null) 'week': week,
+      if (startDate != null) 'start_date': startDate,
+      if (endDate != null) 'end_date': endDate,
+      if (month != null) 'month': month,
     };
   }
 }

@@ -66,9 +66,9 @@ class _RiwayatKesehatanPageState extends State<RiwayatKesehatanPage> {
       case '7 Hari':
         return '7Days';
       case '30 Hari':
-        return '30Days';
+        return '1Month';  // Changed from '30Days' to match API response
       case '3 Bulan':
-        return '90Days';
+        return '3Months';  // Changed from '90Days' to match API response
       default:
         return '7Days';
     }
@@ -107,7 +107,7 @@ class _RiwayatKesehatanPageState extends State<RiwayatKesehatanPage> {
       if (group.isEmpty) continue;
       
       final firstItem = group.first;
-      final dateTime = firstItem.dateTime;
+      final dateTime = firstItem.dateTime.toLocal();
       
       // Format date: "Sabtu, 13 Jan 2025"
       final dayNames = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
