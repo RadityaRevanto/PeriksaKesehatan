@@ -14,6 +14,7 @@ import 'package:periksa_kesehatan/pages/input/widgets/heart_rate_section.dart';
 import 'package:periksa_kesehatan/pages/input/widgets/activity_section.dart';
 import 'package:periksa_kesehatan/pages/input/widgets/connectable_devices_section.dart';
 import 'package:periksa_kesehatan/pages/input/widgets/save_data_button.dart';
+import 'package:periksa_kesehatan/pages/input/widgets/height_section.dart';
 
 class InputDataKesehatanPage extends StatefulWidget {
   const InputDataKesehatanPage({super.key});
@@ -28,6 +29,7 @@ class _InputDataKesehatanPageState extends State<InputDataKesehatanPage> {
   final TextEditingController _diastolikController = TextEditingController();
   final TextEditingController _gulaDarahController = TextEditingController();
   final TextEditingController _beratBadanController = TextEditingController();
+  final TextEditingController _tinggiBadanController = TextEditingController();
   final TextEditingController _detakJantungController = TextEditingController();
   final TextEditingController _aktivitasController = TextEditingController();
 
@@ -37,12 +39,22 @@ class _InputDataKesehatanPageState extends State<InputDataKesehatanPage> {
     _diastolikController.dispose();
     _gulaDarahController.dispose();
     _beratBadanController.dispose();
+    _tinggiBadanController.dispose();
     _detakJantungController.dispose();
     _aktivitasController.dispose();
     super.dispose();
   }
 
   void _handleSaveData() {
+    print('--- DEBUG: DATA SUBMISSION START ---');
+    print('Raw Input - Sistolik: "${_sistolikController.text}"');
+    print('Raw Input - Diastolik: "${_diastolikController.text}"');
+    print('Raw Input - Gula Darah: "${_gulaDarahController.text}"');
+    print('Raw Input - Berat Badan: "${_beratBadanController.text}"');
+    print('Raw Input - Tinggi Badan: "${_tinggiBadanController.text}"');
+    print('Raw Input - Detak Jantung: "${_detakJantungController.text}"');
+    print('Raw Input - Aktivitas: "${_aktivitasController.text}"');
+
     // Parse data dari controllers (nullable)
     final systolic = _sistolikController.text.isNotEmpty
         ? int.tryParse(_sistolikController.text)
@@ -53,9 +65,19 @@ class _InputDataKesehatanPageState extends State<InputDataKesehatanPage> {
     final bloodSugar = _gulaDarahController.text.isNotEmpty
         ? int.tryParse(_gulaDarahController.text)
         : null;
-    final weight = _beratBadanController.text.isNotEmpty
-        ? double.tryParse(_beratBadanController.text)
+    
+    // Handle decimal separator for comma (Indonesia) -> dot (Standard)
+    final weightText = _beratBadanController.text.replaceAll(',', '.');
+    final weight = weightText.isNotEmpty
+        ? double.tryParse(weightText)
         : null;
+        
+    // Backend expects int for height, so we round to nearest int
+    final heightText = _tinggiBadanController.text.replaceAll(',', '.');
+    final height = heightText.isNotEmpty
+        ? double.tryParse(heightText)
+        : null;
+        
     final heartRate = _detakJantungController.text.isNotEmpty
         ? int.tryParse(_detakJantungController.text)
         : null;
@@ -63,16 +85,23 @@ class _InputDataKesehatanPageState extends State<InputDataKesehatanPage> {
         ? _aktivitasController.text
         : null;
 
+    print('Parsed Data - Weight: $weight');
+    print('Parsed Data - Height: $height');
+
     // Create health data entity with current date/time
     final healthData = HealthData(
       systolic: systolic,
       diastolic: diastolic,
       bloodSugar: bloodSugar,
       weight: weight,
+      height: height,
       heartRate: heartRate,
       activity: activity,
       date: DateTime.now(), // Otomatis menggunakan tanggal saat input
     );
+    
+    print('Constructed HealthData: $healthData');
+    print('Is Empty? ${healthData.isEmpty}');
 
     // Trigger save event
     context.read<HealthBloc>().add(SaveHealthDataEvent(healthData: healthData));
@@ -83,6 +112,7 @@ class _InputDataKesehatanPageState extends State<InputDataKesehatanPage> {
     _diastolikController.clear();
     _gulaDarahController.clear();
     _beratBadanController.clear();
+    _tinggiBadanController.clear();
     _detakJantungController.clear();
     _aktivitasController.clear();
   }
@@ -171,6 +201,11 @@ class _InputDataKesehatanPageState extends State<InputDataKesehatanPage> {
                 onConnect: () {
                   // TODO: Implement connect device
                 },
+              ),
+              const SizedBox(height: 16),
+              HeightSection(
+                controller: _tinggiBadanController,
+
               ),
               HeartRateSection(
                 controller: _detakJantungController,

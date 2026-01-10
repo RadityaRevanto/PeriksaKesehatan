@@ -3,11 +3,11 @@ import 'package:flutter/services.dart';
 import 'package:periksa_kesehatan/pages/input/widgets/section_header.dart';
 import 'package:periksa_kesehatan/pages/input/widgets/health_input_field.dart';
 
-class WeightSection extends StatelessWidget {
+class HeightSection extends StatelessWidget {
   final TextEditingController controller;
   final VoidCallback? onConnect;
 
-  const WeightSection({
+  const HeightSection({
     super.key,
     required this.controller,
     this.onConnect,
@@ -19,13 +19,13 @@ class WeightSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SectionHeader(
-          title: 'Berat Badan',
+          title: 'Tinggi Badan',
           onConnect: onConnect,
         ),
         const SizedBox(height: 12),
         HealthInputField(
           controller: controller,
-          label: 'kg',
+          label: 'cm',
           helperText: '',
           inputFormatters: [
             FilteringTextInputFormatter.allow(RegExp(r'^\d+[\.,]?\d{0,2}')),

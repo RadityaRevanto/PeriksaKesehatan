@@ -59,6 +59,8 @@ class HealthRemoteDataSourceImpl implements HealthRemoteDataSource {
         // Jika response langsung berisi data
         return HealthDataModel.fromJson(jsonResponse);
       } else {
+        print('REMOTE ERROR: ${response.statusCode}');
+        print('REMOTE BODY: ${response.body}');
         final errorBody = jsonDecode(response.body);
         throw ApiException(
           message: errorBody['message'] ?? 'Gagal menyimpan data kesehatan',

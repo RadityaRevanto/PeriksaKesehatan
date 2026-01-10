@@ -22,29 +22,41 @@ class HealthBloc extends Bloc<HealthEvent, HealthState> {
     SaveHealthDataEvent event,
     Emitter<HealthState> emit,
   ) async {
+    print('BLOC: _onSaveHealthData triggered');
+    print('BLOC: Data to save: ${event.healthData}');
+    
     emit(const HealthLoading());
     
     try {
       // Validate: at least one field should have value
       if (event.healthData.isEmpty) {
+        print('BLOC ERROR: Data is empty');
         emit(const HealthError(
           message: 'Minimal satu data kesehatan harus diisi',
         ));
         return;
       }
 
+      print('BLOC: Calling repository...');
       final result = await _healthRepository.saveHealthData(event.healthData);
 
       result.fold(
-        (failure) => emit(HealthError(message: failure.message)),
-        (healthData) => emit(
-          HealthSaveSuccess(
-            healthData: healthData,
-            message: 'Data kesehatan berhasil disimpan',
-          ),
-        ),
+        (failure) {
+          print('BLOC ERROR: Repository returned failure: ${failure.message}');
+          emit(HealthError(message: failure.message));
+        },
+        (healthData) {
+          print('BLOC SUCCESS: Data saved successfully');
+          emit(
+            HealthSaveSuccess(
+              healthData: healthData,
+              message: 'Data kesehatan berhasil disimpan',
+            ),
+          );
+        },
       );
     } catch (e) {
+      print('BLOC EXCEPTION: $e');
       emit(HealthError(message: e.toString()));
     }
   }

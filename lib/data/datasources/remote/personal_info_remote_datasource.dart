@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:periksa_kesehatan/core/network/api_client.dart';
 import 'package:periksa_kesehatan/data/models/profile/personal_info_model.dart';
 import 'package:dio/dio.dart';
@@ -33,12 +34,22 @@ class PersonalInfoRemoteDatasource {
 
   Future<PersonalInfoModel> updatePersonalInfo(
     String token,
-    PersonalInfoModel personalInfo,
-  ) async {
+    PersonalInfoModel personalInfo, {
+    File? imageFile,
+  }) async {
     try {
+      final map = personalInfo.toJson();
+      // Remove photo_url to avoid validation error
+      map.remove('photo_url');
+      
+      // If image is provided, add as MultipartFile
+      if (imageFile != null) {
+        map['photo'] = await MultipartFile.fromFile(imageFile.path);
+      }
+
       final response = await apiClient.put(
         '/profile',
-        data: personalInfo.toJson(),
+        data: FormData.fromMap(map),
         options: Options(
           headers: {
             'Authorization': 'Bearer $token',
@@ -50,12 +61,6 @@ class PersonalInfoRemoteDatasource {
         return PersonalInfoModel.fromJson(response.data['data']);
       }
       throw Exception('Failed to update personal info');
-    } on DioException catch (e) {
-      // Jika 404 (profil belum ada), throw exception dengan message khusus
-      if (e.response?.statusCode == 404) {
-        throw Exception('Profile not found, need to create first');
-      }
-      rethrow;
     } catch (e) {
       rethrow;
     }
@@ -63,13 +68,23 @@ class PersonalInfoRemoteDatasource {
 
   Future<PersonalInfoModel> createPersonalInfo(
     String token,
-    PersonalInfoModel personalInfo,
-  ) async {
+    PersonalInfoModel personalInfo, {
+    File? imageFile,
+  }) async {
     try {
       // Gunakan toJsonForCreate() untuk memastikan name dan birth_date selalu ada
-      final response = await apiClient.post(
+      final map = personalInfo.toJsonForCreate();
+      // Remove photo_url to avoid validation error
+      map.remove('photo_url');
+      
+      // If image is provided, add as MultipartFile
+      if (imageFile != null) {
+        map['photo'] = await MultipartFile.fromFile(imageFile.path);
+      }
+
+      final response = await apiClient.put(
         '/profile',
-        data: personalInfo.toJsonForCreate(),
+        data: FormData.fromMap(map),
         options: Options(
           headers: {
             'Authorization': 'Bearer $token',
@@ -81,15 +96,6 @@ class PersonalInfoRemoteDatasource {
         return PersonalInfoModel.fromJson(response.data['data']);
       }
       throw Exception('Failed to create personal info');
-    } on DioException catch (e) {
-      // Jika 409 (conflict) atau 400 dengan message profil sudah ada, throw exception khusus
-      if (e.response?.statusCode == 409 || 
-          (e.response?.statusCode == 400 && 
-           (e.response?.data?['message']?.toString().toLowerCase().contains('sudah ada') == true ||
-            e.response?.data?['message']?.toString().toLowerCase().contains('already exists') == true))) {
-        throw Exception('Profile already exists');
-      }
-      rethrow;
     } catch (e) {
       rethrow;
     }

@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:intl/intl.dart';
+
 import 'package:periksa_kesehatan/core/constants/app_colors.dart';
 import 'package:periksa_kesehatan/widgets/cards/health_metric_card.dart';
 import 'package:periksa_kesehatan/pages/input/input_data_kesehatan_page.dart';
@@ -13,6 +13,8 @@ import 'package:periksa_kesehatan/presentation/bloc/health/health_state.dart';
 import 'package:periksa_kesehatan/domain/entities/health_data.dart';
 import 'package:periksa_kesehatan/data/models/health/health_alert_model.dart';
 import 'package:periksa_kesehatan/data/models/health/health_summary_model.dart';
+import 'package:periksa_kesehatan/presentation/bloc/auth/auth_bloc.dart';
+import 'package:periksa_kesehatan/presentation/bloc/auth/auth_state.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -27,7 +29,7 @@ class _HomePageState extends State<HomePage> {
   bool _isManualDate = false;
   HealthData? _latestHealthData;
   HealthSummaryModel? _healthHistory;
-
+  HealthAlertsModel? _healthAlerts;
 
   @override
   void initState() {
@@ -201,13 +203,21 @@ class _HomePageState extends State<HomePage> {
                               ),
                             ),
                             const SizedBox(height: 4),
-                            Text(
-                              'Ibu Siti',
-                              style: GoogleFonts.nunitoSans(
-                                color: Colors.white,
-                                fontSize: 28,
-                                fontWeight: FontWeight.bold,
-                              ),
+                            BlocBuilder<AuthBloc, AuthState>(
+                              builder: (context, state) {
+                                String name = 'Pengguna'; // Default name
+                                if (state is AuthAuthenticated) {
+                                  name = state.name;
+                                }
+                                return Text(
+                                  name,
+                                  style: GoogleFonts.nunitoSans(
+                                    color: Colors.white,
+                                    fontSize: 28,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                );
+                              },
                             ),
                           ],
                         ),
@@ -278,17 +288,25 @@ class _HomePageState extends State<HomePage> {
                         if (state is HealthDataLoaded) {
                           setState(() {
                             _latestHealthData = state.healthData;
+                            // Only update alerts if they are present in the state
+                            if (state.alerts != null) {
+                              _healthAlerts = state.alerts;
+                            }
                           });
                         } else if (state is HealthHistoryLoaded) {
                           setState(() {
                             _healthHistory = state.summary;
                           });
+                        } else if (state is HealthAlertsLoaded) {
+                          // Explicitly handle HealthAlertsLoaded state
+                          setState(() {
+                            if (state.alerts != null) {
+                              _healthAlerts = state.alerts;
+                            }
+                          });
                         }
                       },
                       builder: (context, state) {
-                        print('DEBUG: Current state: ${state.runtimeType}, _isManualDate: $_isManualDate');
-                        print('DEBUG: _latestHealthData: $_latestHealthData, _healthHistory: ${_healthHistory != null}');
-                        
                         if (state is HealthLoading) {
                           return const Center(
                             child: Padding(
@@ -424,22 +442,12 @@ class _HomePageState extends State<HomePage> {
 
                     const SizedBox(height: 20),
 
-                    // Warning banner - Dynamic from API (MOVED TO TOP)
-                    BlocBuilder<HealthBloc, HealthState>(
-                      builder: (context, state) {
-                        // Get alerts from HealthDataLoaded state
-                        HealthAlertsModel? alerts;
-                        
-                        if (state is HealthDataLoaded && state.alerts != null) {
-                          alerts = state.alerts;
-                        } else if (state is HealthAlertsLoaded && state.alerts != null) {
-                          alerts = state.alerts;
-                        }
-                        
-                        // Only show if we have alerts
-                        if (alerts != null && alerts.alerts.isNotEmpty) {
+                    // Warning banner - Using cached _healthAlerts
+                    if (_healthAlerts != null && _healthAlerts!.alerts.isNotEmpty)
+                      Builder(
+                        builder: (context) {
                           // Get the first alert
-                          final alert = alerts.alerts.first;
+                          final alert = _healthAlerts!.alerts.first;
                           
                           return Column(
                             children: [
@@ -486,7 +494,7 @@ class _HomePageState extends State<HomePage> {
                                               style: GoogleFonts.nunitoSans(
                                                 fontSize: 16,
                                                 fontWeight: FontWeight.bold,
-                                                color: Color(0xFF5D4037),
+                                                color: const Color(0xFF5D4037),
                                               ),
                                             ),
                                             const SizedBox(height: 4),
@@ -508,12 +516,8 @@ class _HomePageState extends State<HomePage> {
                               const SizedBox(height: 20),
                             ],
                           );
-                        }
-                        
-                        // Don't show warning if no alerts
-                        return const SizedBox.shrink();
-                      },
-                    ),
+                        },
+                      ),
 
                     // Tambah Pembacaan Baru Section
                     Container(
@@ -756,6 +760,7 @@ class _HomePageState extends State<HomePage> {
     int? diastolic;
     int? bloodSugar;
     double? weight;
+    double? height;
     String? activity;
     DateTime? latestDate;
     
@@ -776,6 +781,10 @@ class _HomePageState extends State<HomePage> {
         // Parse "90.50 kg" format
         weight = double.tryParse(reading.value.replaceAll(RegExp(r'[^0-9.]'), ''));
         latestDate ??= reading.dateTime;
+      } else if (reading.metricType == 'tinggi_badan' || reading.metricType == 'height') {
+        // Parse "170 cm" format
+        height = double.tryParse(reading.value.replaceAll(RegExp(r'[^0-9.]'), ''));
+        latestDate ??= reading.dateTime;
       } else if (reading.metricType == 'aktivitas' || reading.metricType == 'detak_jantung') {
         // For now, just show the value
         activity = reading.value;
@@ -790,6 +799,7 @@ class _HomePageState extends State<HomePage> {
       diastolic: diastolic,
       bloodSugar: bloodSugar,
       weight: weight,
+      height: height,
       activity: activity,
     ) : null;
     
@@ -881,8 +891,8 @@ class _HomePageState extends State<HomePage> {
                 value: data?.weight?.toStringAsFixed(1) ?? '--',
                 unit: data?.weight != null ? 'kg' : '',
                 subtitle: data != null ? _getTimeAgo(data.date) : 'Belum ada data',
-                statusText: 'Normal',
-                statusColor: AppColors.success,
+                statusText: _getWeightStatus(data?.weight, data?.height),
+                statusColor: _getWeightStatusColor(data?.weight, data?.height),
                 changeIndicator: '',
                 changeColor: AppColors.weight,
               ),
@@ -958,4 +968,32 @@ class _HomePageState extends State<HomePage> {
     return Colors.red; // Tinggi
   }
 
+  String _getWeightStatus(double? weight, double? height) {
+    if (weight == null) return 'N/A';
+    // Gunakan 'Masukan tinggi badan' jika tinggi belum diinputkan
+    if (height == null || height <= 0) return 'Masukan tinggi badan';
+    
+    // Hitung BMI
+    // BMI = weight (kg) / (height (m))^2
+    final heightInMeters = height / 100;
+    final bmi = weight / (heightInMeters * heightInMeters);
+    
+    if (bmi < 18.5) return 'Kurus';
+    if (bmi < 25.0) return 'Normal';
+    if (bmi < 30.0) return 'Gemuk';
+    return 'Obesitas';
+  }
+
+  Color _getWeightStatusColor(double? weight, double? height) {
+    if (weight == null) return Colors.grey;
+    if (height == null || height <= 0) return AppColors.warning; // Alert untuk input tinggi
+    
+    final heightInMeters = height / 100;
+    final bmi = weight / (heightInMeters * heightInMeters);
+    
+    if (bmi < 18.5) return Colors.blue;
+    if (bmi < 25.0) return AppColors.success;
+    if (bmi < 30.0) return AppColors.warning;
+    return Colors.red;
+  }
 }

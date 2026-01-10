@@ -10,6 +10,7 @@ class HealthDataModel {
   final double? weight;
   final int? heartRate;
   final String? activity;
+  final double? height;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -22,6 +23,7 @@ class HealthDataModel {
     this.weight,
     this.heartRate,
     this.activity,
+    this.height,
     this.createdAt,
     this.updatedAt,
   });
@@ -35,6 +37,7 @@ class HealthDataModel {
       if (weight != null) 'weight': weight,
       if (heartRate != null) 'heart_rate': heartRate,
       if (activity != null) 'activity': activity,
+      if (height != null) 'height': height!.round(),
       'date': DateTime.now().toIso8601String().split('T')[0], // Format: YYYY-MM-DD
     };
   }
@@ -50,6 +53,8 @@ class HealthDataModel {
       weight: (json['weight'] as num?)?.toDouble(),
       heartRate: json['heart_rate'] as int?,
       activity: json['activity'] as String?,
+      // Try 'height' first, then 'tinggi_badan'
+      height: (json['height'] as num?)?.toDouble() ?? (json['tinggi_badan'] as num?)?.toDouble(),
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'] as String)
           : null,
@@ -68,6 +73,7 @@ class HealthDataModel {
       weight: weight,
       heartRate: heartRate,
       activity: activity,
+      height: height,
       date: createdAt ?? DateTime.now(),
     );
   }
@@ -81,6 +87,7 @@ class HealthDataModel {
       weight: entity.weight,
       heartRate: entity.heartRate,
       activity: entity.activity,
+      height: entity.height,
     );
   }
 }
