@@ -34,6 +34,7 @@ class PersonalInfoBloc extends Bloc<PersonalInfoEvent, PersonalInfoState> {
       final personalInfo = await repository.updatePersonalInfo(
         event.token,
         event.personalInfo,
+        imageFile: event.imageFile,
       );
       emit(PersonalInfoUpdated(personalInfo));
       // Reload after update
@@ -48,6 +49,7 @@ class PersonalInfoBloc extends Bloc<PersonalInfoEvent, PersonalInfoState> {
           final personalInfo = await repository.createPersonalInfo(
             event.token,
             event.personalInfo,
+            imageFile: event.imageFile,
           );
           emit(PersonalInfoUpdated(personalInfo));
           // Reload after create
@@ -70,6 +72,7 @@ class PersonalInfoBloc extends Bloc<PersonalInfoEvent, PersonalInfoState> {
       final personalInfo = await repository.createPersonalInfo(
         event.token,
         event.personalInfo,
+        imageFile: event.imageFile,
       );
       emit(PersonalInfoUpdated(personalInfo));
       // Reload after create
@@ -86,6 +89,7 @@ class PersonalInfoBloc extends Bloc<PersonalInfoEvent, PersonalInfoState> {
           final personalInfo = await repository.updatePersonalInfo(
             event.token,
             event.personalInfo,
+            imageFile: event.imageFile,
           );
           emit(PersonalInfoUpdated(personalInfo));
           // Reload after update

@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -38,6 +39,7 @@ class _EditProfilPageState extends State<EditProfilPage> {
   late TextEditingController _phoneController;
   late TextEditingController _addressController;
   DateTime? _selectedDate;
+  File? _selectedImageFile;
 
   @override
   void initState() {
@@ -518,17 +520,17 @@ class _EditProfilPageState extends State<EditProfilPage> {
       address: _addressController.text.trim().isEmpty ? null : _addressController.text.trim(),
     );
 
-    // Jika profil sudah ada, gunakan PUT (update) - tidak perlu field required
-    // Jika profil belum ada, gunakan POST (create) - memerlukan name dan birth_date
+    // Jika profil sudah ada, gunakan PUT (update) - semua field optional
+    // Jika profil belum ada, gunakan PUT (create) - name dan birth_date required (minimal string kosong)
     if (widget.hasExistingProfile) {
-      // Update existing profile dengan PUT - semua field optional
+      // Update existing profile
       context.read<PersonalInfoBloc>().add(
-        UpdatePersonalInfo(token, personalInfo),
+        UpdatePersonalInfo(token, personalInfo, imageFile: _selectedImageFile),
       );
     } else {
-      // Create new profile dengan POST - name dan birth_date required (minimal string kosong)
+      // Create new profile
       context.read<PersonalInfoBloc>().add(
-        CreatePersonalInfo(token, personalInfo),
+        CreatePersonalInfo(token, personalInfo, imageFile: _selectedImageFile),
       );
     }
     

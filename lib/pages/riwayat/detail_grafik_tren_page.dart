@@ -17,11 +17,26 @@ class DetailGrafikTrenPage extends StatefulWidget {
 }
 
 class _DetailGrafikTrenPageState extends State<DetailGrafikTrenPage> {
+  String _selectedTimeRange = '7Days';
+
   @override
   void initState() {
     super.initState();
     // Fetch health history when page is initialized
-    context.read<HealthBloc>().add(const FetchHealthHistoryEvent());
+    _fetchData();
+  }
+
+  void _fetchData() {
+    context.read<HealthBloc>().add(FetchHealthHistoryEvent(timeRange: _selectedTimeRange));
+  }
+
+  void _onTimeRangeChanged(String newRange) {
+    if (_selectedTimeRange != newRange) {
+      setState(() {
+        _selectedTimeRange = newRange;
+      });
+      _fetchData();
+    }
   }
 
   @override
@@ -54,6 +69,20 @@ class _DetailGrafikTrenPageState extends State<DetailGrafikTrenPage> {
           }
 
           if (state is HealthError) {
+            // Check if error is due to empty data
+            if (state.message.toLowerCase().contains('tidak ada data')) {
+              return Center(
+                 child: Text(
+                  'Tidak ada Data',
+                  style: GoogleFonts.nunitoSans(
+                    fontSize: 16,
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                 ),
+              );
+            }
+
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -64,12 +93,11 @@ class _DetailGrafikTrenPageState extends State<DetailGrafikTrenPage> {
                       fontSize: 14,
                       color: Colors.red,
                     ),
+                    textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 16),
                   ElevatedButton(
-                    onPressed: () {
-                      context.read<HealthBloc>().add(const FetchHealthHistoryEvent());
-                    },
+                    onPressed: _fetchData,
                     child: const Text('Coba Lagi'),
                   ),
                 ],
@@ -87,6 +115,10 @@ class _DetailGrafikTrenPageState extends State<DetailGrafikTrenPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Filter Section
+                _buildFilterSection(),
+                const SizedBox(height: 20),
+                
                 // Grafik Tekanan Darah
                 _buildChartSection(
                   title: 'Grafik Tren - Tekanan Darah',
@@ -111,6 +143,54 @@ class _DetailGrafikTrenPageState extends State<DetailGrafikTrenPage> {
             ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildFilterSection() {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(30),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          _buildFilterButton('7 Hari', '7Days'),
+          _buildFilterButton('30 Hari', '1Month'),
+          _buildFilterButton('3 Bulan', '3Months'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterButton(String label, String value) {
+    final bool isSelected = _selectedTimeRange == value;
+    return GestureDetector(
+      onTap: () => _onTimeRangeChanged(value),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.primary : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          label,
+          style: GoogleFonts.nunitoSans(
+            fontSize: 14,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+            color: isSelected ? Colors.white : AppColors.textSecondary,
+          ),
+        ),
       ),
     );
   }
@@ -235,7 +315,7 @@ class _DetailGrafikTrenPageState extends State<DetailGrafikTrenPage> {
     if (trendCharts == null) {
       return Center(
         child: Text(
-          'Tidak ada data',
+          'Tidak ada Data',
           style: GoogleFonts.nunitoSans(
             fontSize: 14,
             color: AppColors.textSecondary,
@@ -258,7 +338,7 @@ class _DetailGrafikTrenPageState extends State<DetailGrafikTrenPage> {
     if (data == null || data.isEmpty) {
       return Center(
         child: Text(
-          'Tidak ada data tren tekanan darah',
+          'Tidak ada Data',
           style: GoogleFonts.nunitoSans(
             fontSize: 14,
             color: AppColors.textSecondary,
@@ -270,6 +350,9 @@ class _DetailGrafikTrenPageState extends State<DetailGrafikTrenPage> {
     final List<Map<String, double>> chartData = [];
     final List<String> days = [];
 
+    // Sort data if necessary, though usually backend does it. 
+    // We assume data is in order or handle it in painter.
+    
     for (var item in data) {
       chartData.add({
         'systolic': item.systolic,
@@ -278,8 +361,13 @@ class _DetailGrafikTrenPageState extends State<DetailGrafikTrenPage> {
 
       try {
         final date = DateTime.parse(item.date);
-        final dayName = DateFormat('EEE', 'id_ID').format(date);
-        days.add(dayName.substring(0, 3));
+        String dayLabel;
+        if (_selectedTimeRange == '7Days') {
+          dayLabel = DateFormat('EEE', 'id_ID').format(date);
+        } else {
+           dayLabel = DateFormat('d MMM', 'id_ID').format(date);
+        }
+        days.add(dayLabel);
       } catch (e) {
         days.add(item.date);
       }
@@ -304,20 +392,7 @@ class _DetailGrafikTrenPageState extends State<DetailGrafikTrenPage> {
           right: 0,
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: days.map((day) {
-              return SizedBox(
-                width: 40,
-                child: Text(
-                  day,
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.nunitoSans(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w400,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-              );
-            }).toList(),
+            children: _buildXAxisLabels(days),
           ),
         ),
       ],
@@ -328,7 +403,7 @@ class _DetailGrafikTrenPageState extends State<DetailGrafikTrenPage> {
     if (data == null || data.isEmpty) {
       return Center(
         child: Text(
-          'Tidak ada data tren gula darah',
+          'Tidak ada Data',
           style: GoogleFonts.nunitoSans(
             fontSize: 14,
             color: AppColors.textSecondary,
@@ -345,8 +420,13 @@ class _DetailGrafikTrenPageState extends State<DetailGrafikTrenPage> {
 
       try {
         final date = DateTime.parse(item.date);
-        final dayName = DateFormat('EEE', 'id_ID').format(date);
-        days.add(dayName.substring(0, 3));
+        String dayLabel;
+        if (_selectedTimeRange == '7Days') {
+          dayLabel = DateFormat('EEE', 'id_ID').format(date);
+        } else {
+           dayLabel = DateFormat('d MMM', 'id_ID').format(date);
+        }
+        days.add(dayLabel);
       } catch (e) {
         days.add(item.date);
       }
@@ -369,20 +449,7 @@ class _DetailGrafikTrenPageState extends State<DetailGrafikTrenPage> {
           right: 0,
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: days.map((day) {
-              return SizedBox(
-                width: 40,
-                child: Text(
-                  day,
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.nunitoSans(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w400,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-              );
-            }).toList(),
+            children: _buildXAxisLabels(days),
           ),
         ),
       ],
@@ -393,7 +460,7 @@ class _DetailGrafikTrenPageState extends State<DetailGrafikTrenPage> {
     if (data == null || data.isEmpty) {
       return Center(
         child: Text(
-          'Tidak ada data tren berat badan',
+          'Tidak ada Data',
           style: GoogleFonts.nunitoSans(
             fontSize: 14,
             color: AppColors.textSecondary,
@@ -410,8 +477,13 @@ class _DetailGrafikTrenPageState extends State<DetailGrafikTrenPage> {
 
       try {
         final date = DateTime.parse(item.date);
-        final dayName = DateFormat('EEE', 'id_ID').format(date);
-        days.add(dayName.substring(0, 3));
+        String dayLabel;
+        if (_selectedTimeRange == '7Days') {
+          dayLabel = DateFormat('EEE', 'id_ID').format(date);
+        } else {
+           dayLabel = DateFormat('d MMM', 'id_ID').format(date);
+        }
+        days.add(dayLabel);
       } catch (e) {
         days.add(item.date);
       }
@@ -432,24 +504,37 @@ class _DetailGrafikTrenPageState extends State<DetailGrafikTrenPage> {
           right: 0,
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: days.map((day) {
-              return SizedBox(
-                width: 40,
-                child: Text(
-                  day,
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.nunitoSans(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w400,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-              );
-            }).toList(),
+            children: _buildXAxisLabels(days),
           ),
         ),
       ],
     );
+  }
+  
+  List<Widget> _buildXAxisLabels(List<String> days) {
+    if (days.isEmpty) return [];
+    
+    if (days.length <= 7) {
+      return days.map((day) => SizedBox(
+        width: 40,
+        child: Text(
+          day,
+          textAlign: TextAlign.center,
+          style: GoogleFonts.nunitoSans(
+            fontSize: 11,
+            fontWeight: FontWeight.w400,
+            color: AppColors.textPrimary,
+          ),
+        ),
+      )).toList();
+    }
+    
+    // For many items, just show first and last to avoid clutter
+    return [
+      Text(days.first, style: GoogleFonts.nunitoSans(fontSize: 11, color: AppColors.textPrimary)),
+      Text("...", style: GoogleFonts.nunitoSans(fontSize: 11, color: AppColors.textPrimary)),
+      Text(days.last, style: GoogleFonts.nunitoSans(fontSize: 11, color: AppColors.textPrimary)),
+    ];
   }
 
   Widget _buildNormalRangeText(ChartType chartType) {
@@ -512,6 +597,9 @@ class BloodSugarChartPainter extends CustomPainter {
     final chartPadding = 20.0;
     final chartWidth = size.width - (chartPadding * 2);
     final chartHeight = size.height - 30;
+    
+    if (days.isEmpty) return;
+    
     final barWidth = chartWidth / days.length;
     final spacing = barWidth * 0.2;
 
@@ -586,6 +674,9 @@ class WeightChartPainter extends CustomPainter {
     final chartPadding = 20.0;
     final chartWidth = size.width - (chartPadding * 2);
     final chartHeight = size.height - 30;
+    
+    if (days.isEmpty) return;
+
     final barWidth = chartWidth / days.length;
     final spacing = barWidth * 0.2;
 
@@ -625,4 +716,3 @@ class WeightChartPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
-

@@ -59,6 +59,8 @@ class HealthRemoteDataSourceImpl implements HealthRemoteDataSource {
         // Jika response langsung berisi data
         return HealthDataModel.fromJson(jsonResponse);
       } else {
+        print('REMOTE ERROR: ${response.statusCode}');
+        print('REMOTE BODY: ${response.body}');
         final errorBody = jsonDecode(response.body);
         throw ApiException(
           message: errorBody['message'] ?? 'Gagal menyimpan data kesehatan',
@@ -152,7 +154,7 @@ class HealthRemoteDataSourceImpl implements HealthRemoteDataSource {
       if (response.statusCode == 200) {
         final jsonResponse = jsonDecode(response.body);
         
-        // Response memiliki format: { "data": { "summary": { "7Days": {...}, "30Days": {...}, "90Days": {...} }, "trend_charts": { "blood_pressure": { "7Days": [...], ... } }, "reading_history": { "7Days": [...] } } }
+        // Response memiliki format: { "data": { "summary": { "7Days": {...}, "1Month": {...}, "3Months": {...} }, "trend_charts": { "blood_pressure": { "7Days": [...], ... } }, "reading_history": { "7Days": [...], "1Month": { "records": [...] }, "3Months": { "records": [...] } } } }
         if (jsonResponse['data'] != null) {
           final data = jsonResponse['data'] as Map<String, dynamic>;
           final Map<String, dynamic> summaryData = {};
@@ -163,12 +165,6 @@ class HealthRemoteDataSourceImpl implements HealthRemoteDataSource {
             // Extract data from the selected time range key
             if (summary[timeRange] != null) {
               summaryData.addAll(summary[timeRange] as Map<String, dynamic>);
-            } else {
-              // If selected time range has no data, throw exception
-              throw ApiException(
-                message: 'Tidak ada data untuk periode ${_getTimeRangeLabel(timeRange)}',
-                statusCode: 404,
-              );
             }
           }
           
@@ -195,13 +191,24 @@ class HealthRemoteDataSourceImpl implements HealthRemoteDataSource {
             final readingHistory = data['reading_history'] as Map<String, dynamic>;
             // Extract data from the selected time range key
             if (readingHistory[timeRange] != null) {
-              summaryData['reading_history'] = readingHistory[timeRange];
+              // For 7Days, it's a direct array
+              // For 1Month and 3Months, it's an object with 'records' array
+              final timeRangeData = readingHistory[timeRange];
+              if (timeRangeData is List) {
+                summaryData['reading_history'] = timeRangeData;
+              } else if (timeRangeData is Map<String, dynamic> && timeRangeData['records'] != null) {
+                summaryData['reading_history'] = timeRangeData['records'];
+              }
             }
           }
           
           if (summaryData.isNotEmpty) {
             return HealthSummaryModel.fromJson(summaryData);
           }
+          
+          // Return null if no data (e.g., for new users)
+          // This allows UI to show empty state gracefully
+          return null;
         }
         
         return null;
@@ -229,8 +236,10 @@ class HealthRemoteDataSourceImpl implements HealthRemoteDataSource {
       case '7Days':
         return '7 hari terakhir';
       case '30Days':
+      case '1Month':
         return '30 hari terakhir';
       case '90Days':
+      case '3Months':
         return '3 bulan terakhir';
       default:
         return timeRange;

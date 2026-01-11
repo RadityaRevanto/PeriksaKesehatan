@@ -6,6 +6,7 @@ class HealthData {
   final double? weight;
   final int? heartRate;
   final String? activity;
+  final double? height;
   final DateTime date;
 
   const HealthData({
@@ -15,6 +16,7 @@ class HealthData {
     this.weight,
     this.heartRate,
     this.activity,
+    this.height,
     required this.date,
   });
 
@@ -25,8 +27,14 @@ class HealthData {
       bloodSugar == null &&
       weight == null &&
       heartRate == null &&
+      height == null &&
       (activity == null || activity!.isEmpty);
 
   /// Check if at least one field has value
   bool get isNotEmpty => !isEmpty;
+
+  @override
+  String toString() {
+    return 'HealthData(systolic: $systolic, diastolic: $diastolic, bloodSugar: $bloodSugar, weight: $weight, height: $height, heartRate: $heartRate, activity: $activity, date: $date)';
+  }
 }
