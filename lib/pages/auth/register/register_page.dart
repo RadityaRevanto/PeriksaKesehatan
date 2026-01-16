@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:periksa_kesehatan/core/constants/app_colors.dart';
 import 'package:periksa_kesehatan/pages/auth/login/login_page.dart';
+import 'package:periksa_kesehatan/pages/legal/terms_conditions_page.dart';
+import 'package:periksa_kesehatan/pages/legal/privacy_policy_page.dart';
 import 'package:periksa_kesehatan/presentation/bloc/auth/auth_bloc.dart';
 import 'package:periksa_kesehatan/presentation/bloc/auth/auth_event.dart';
 import 'package:periksa_kesehatan/presentation/bloc/auth/auth_state.dart';
@@ -213,22 +216,42 @@ class _RegisterPageState extends State<RegisterPage> {
                                   fontSize: 13.5,
                                   color: const Color(0xFF666666),
                                 ),
-                                children: const [
-                                  TextSpan(text: 'Saya setuju dengan '),
+                                children: [
+                                  const TextSpan(text: 'Saya setuju dengan '),
                                   TextSpan(
                                     text: 'Syarat & Ketentuan',
-                                    style: TextStyle(
+                                    style: const TextStyle(
                                       color: AppColors.linkColor,
                                       fontWeight: FontWeight.w500,
+                                      decoration: TextDecoration.underline,
                                     ),
+                                    recognizer: TapGestureRecognizer()
+                                      ..onTap = () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => const TermsConditionsPage(),
+                                          ),
+                                        );
+                                      },
                                   ),
-                                  TextSpan(text: ' dan '),
+                                  const TextSpan(text: ' dan '),
                                   TextSpan(
                                     text: 'Kebijakan Privasi',
-                                    style: TextStyle(
+                                    style: const TextStyle(
                                       color: AppColors.linkColor,
                                       fontWeight: FontWeight.w500,
+                                      decoration: TextDecoration.underline,
                                     ),
+                                    recognizer: TapGestureRecognizer()
+                                      ..onTap = () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => const PrivacyPolicyPage(),
+                                          ),
+                                        );
+                                      },
                                   ),
                                 ],
                               ),
@@ -269,30 +292,30 @@ class _RegisterPageState extends State<RegisterPage> {
                               ),
                       ),
 
-                      const SizedBox(height: 20),
+                      // const SizedBox(height: 20),
 
-                      /// DIVIDER
-                      Row(
-                        children: const [
-                          Expanded(child: Divider()),
-                          Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 10),
-                            child: Text('Atau Daftar dengan'),
-                          ),
-                          Expanded(child: Divider()),
-                        ],
-                      ),
+                      // /// DIVIDER
+                      // Row(
+                      //   children: const [
+                      //     Expanded(child: Divider()),
+                      //     Padding(
+                      //       padding: EdgeInsets.symmetric(horizontal: 10),
+                      //       child: Text('Atau Daftar dengan'),
+                      //     ),
+                      //     Expanded(child: Divider()),
+                      //   ],
+                      // ),
 
-                      const SizedBox(height: 20),
+                      // const SizedBox(height: 20),
 
-                      /// SOCIAL LOGIN
-                      Row(
-                        children: [
-                          buildSocialButton('G', 'Google'),
-                          const SizedBox(width: 10),
-                          buildSocialButton('f', 'Facebook'),
-                        ],
-                      ),
+                      // /// SOCIAL LOGIN
+                      // Row(
+                      //   children: [
+                      //     buildSocialButton('G', 'Google'),
+                      //     const SizedBox(width: 10),
+                      //     buildSocialButton('f', 'Facebook'),
+                      //   ],
+                      // ),
 
                       const SizedBox(height: 24),
 

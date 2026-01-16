@@ -38,6 +38,8 @@ class _EditProfilPageState extends State<EditProfilPage> {
   late TextEditingController _birthDateController;
   late TextEditingController _phoneController;
   late TextEditingController _addressController;
+  late TextEditingController _weightController;
+  late TextEditingController _heightController;
   DateTime? _selectedDate;
   File? _selectedImageFile;
 
@@ -73,6 +75,22 @@ class _EditProfilPageState extends State<EditProfilPage> {
     } else {
       _birthDateController = TextEditingController();
     }
+
+    // Initialize weight and height from the latest available state
+    final state = context.read<PersonalInfoBloc>().state;
+    double? initialWeight;
+    double? initialHeight;
+    if (state is PersonalInfoLoaded) {
+      initialWeight = state.personalInfo?.weight;
+      initialHeight = state.personalInfo?.height;
+    }
+
+    _weightController = TextEditingController(
+      text: initialWeight != null ? initialWeight.toString() : ""
+    );
+    _heightController = TextEditingController(
+      text: initialHeight != null ? initialHeight.toString() : ""
+    );
   }
 
   @override
@@ -81,6 +99,8 @@ class _EditProfilPageState extends State<EditProfilPage> {
     _birthDateController.dispose();
     _phoneController.dispose();
     _addressController.dispose();
+    _weightController.dispose();
+    _heightController.dispose();
     super.dispose();
   }
 
@@ -164,7 +184,7 @@ class _EditProfilPageState extends State<EditProfilPage> {
                   return Stack(
                     children: [
                       SingleChildScrollView(
-                        padding: const EdgeInsets.all(24),
+                        padding: const EdgeInsets.all(16),
                         child: Center(
                           child: Container(
                             constraints: const BoxConstraints(maxWidth: 500),
@@ -173,148 +193,186 @@ class _EditProfilPageState extends State<EditProfilPage> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                        // Info Card
+                        // Info Banner
                         Container(
-                          padding: const EdgeInsets.all(20),
+                          padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
                               colors: [
-                                AppColors.authPrimary.withOpacity(0.1),
-                                AppColors.authPrimary.withOpacity(0.05),
+                                AppColors.authPrimary.withOpacity(0.08),
+                                AppColors.authPrimary.withOpacity(0.03),
                               ],
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                             ),
-                            borderRadius: BorderRadius.circular(16),
+                            borderRadius: BorderRadius.circular(18),
                             border: Border.all(
-                              color: AppColors.authPrimary.withOpacity(0.2),
-                              width: 1,
+                              color: AppColors.authPrimary.withOpacity(0.15),
+                              width: 1.5,
                             ),
                           ),
-                          child: Text(
-                            "Pastikan data yang Anda masukkan sudah benar dan sesuai",
-                            style: GoogleFonts.nunitoSans(
-                              fontSize: 13,
-                              color: const Color(0xFF2D473E),
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 32),
-
-                        // Nama Lengkap
-                        _buildModernFormField(
-                          label: "Nama Lengkap",
-                          controller: _nameController,
-                          hint: "Masukkan nama lengkap (opsional)",
-                        ),
-                        const SizedBox(height: 24),
-
-                        // Tanggal Lahir
-                        _buildModernFormField(
-                          label: "Tanggal Lahir",
-                          controller: _birthDateController,
-                          hint: "Pilih tanggal lahir (opsional)",
-                          readOnly: true,
-                          suffixIcon: _selectedDate != null || _birthDateController.text.isNotEmpty
-                              ? IconButton(
-                                  icon: const Icon(Icons.clear, color: Colors.grey),
-                                  onPressed: () {
-                                    setState(() {
-                                      _selectedDate = null;
-                                      _birthDateController.clear();
-                                    });
-                                  },
-                                )
-                              : null,
-                          onTap: () async {
-                            final DateTime? picked = await showDatePicker(
-                              context: context,
-                              initialDate: _selectedDate ?? DateTime(1973, 1, 15),
-                              firstDate: DateTime(1900),
-                              lastDate: DateTime.now(),
-                              builder: (context, child) {
-                                return Theme(
-                                  data: Theme.of(context).copyWith(
-                                    colorScheme: ColorScheme.light(
-                                      primary: AppColors.authPrimary,
-                                      onPrimary: Colors.white,
-                                      onSurface: Colors.black,
-                                    ),
-                                    dialogBackgroundColor: Colors.white,
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: AppColors.authPrimary.withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Icon(
+                                  Icons.info_outline_rounded,
+                                  color: AppColors.authPrimary,
+                                  size: 20,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  "Pastikan data yang Anda masukkan sudah benar dan sesuai",
+                                  style: GoogleFonts.nunitoSans(
+                                    fontSize: 12.5,
+                                    color: const Color(0xFF2D473E),
+                                    fontWeight: FontWeight.w600,
+                                    height: 1.4,
                                   ),
-                                  child: child!,
-                                );
-                              },
-                            );
-                            if (picked != null) {
-                              setState(() {
-                                _selectedDate = picked;
-                                _birthDateController.text = 
-                                  "${picked.day} ${_getMonthName(picked.month)} ${picked.year}";
-                              });
-                            }
-                            // Jika user cancel, tidak mengubah apapun
-                          },
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 20),
 
-                        // Nomor Telepon
-                        _buildModernFormField(
-                          label: "Nomor Telepon",
-                          controller: _phoneController,
-                          hint: "Masukkan nomor telepon (opsional)",
-                          keyboardType: TextInputType.phone,
-                        ),
-                        const SizedBox(height: 24),
-
-                        // Alamat
-                        _buildModernFormField(
-                          label: "Alamat",
-                          controller: _addressController,
-                          hint: "Masukkan alamat lengkap (opsional)",
-                          maxLines: 4,
-                        ),
-                        const SizedBox(height: 40),
-
-                                  // Action Buttons
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        flex: 2,
-                                        child: ElevatedButton(
-                                          onPressed: isLoading ? null : _saveChanges,
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: AppColors.authPrimary,
-                                            foregroundColor: Colors.white,
-                                            padding: const EdgeInsets.symmetric(vertical: 16),
-                                            elevation: 0,
-                                            shadowColor: AppColors.authPrimary.withOpacity(0.3),
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius: BorderRadius.circular(14),
-                                            ),
-                                            disabledBackgroundColor: Colors.grey.shade300,
-                                          ),
-                                          child: isLoading
-                                              ? SizedBox(
-                                                  height: 20,
-                                                  width: 20,
-                                                  child: CircularProgressIndicator(
-                                                    strokeWidth: 2,
-                                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                                  ),
-                                                )
-                                              : Text(
-                                                  "Simpan Perubahan",
-                                                  style: GoogleFonts.nunitoSans(
-                                                    fontWeight: FontWeight.bold,
-                                                    fontSize: 15,
-                                                  ),
-                                                ),
-                                        ),
+                        // Personal Information Section
+                        Container(
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.06),
+                                blurRadius: 16,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Section Title
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: [
+                                          AppColors.authPrimary,
+                                          AppColors.authPrimary.withOpacity(0.8),
+                                        ],
                                       ),
-                                    ],
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: const Icon(
+                                      Icons.person_outline_rounded,
+                                      color: Colors.white,
+                                      size: 18,
+                                    ),
                                   ),
+                                  const SizedBox(width: 12),
+                                  Text(
+                                    "Informasi Pribadi",
+                                    style: GoogleFonts.nunitoSans(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: const Color(0xFF2D473E),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 20),
+
+                              // Nama Lengkap
+                              _buildModernFormField(
+                                label: "Nama Lengkap",
+                                controller: _nameController,
+                                hint: "Masukkan nama lengkap (opsional)",
+                                prefixIcon: Icons.badge_outlined,
+                              ),
+                              const SizedBox(height: 16),
+
+                              // Tanggal Lahir
+                              _buildModernFormField(
+                                label: "Tanggal Lahir",
+                                controller: _birthDateController,
+                                hint: "Pilih tanggal lahir (opsional)",
+                                prefixIcon: Icons.cake_outlined,
+                                readOnly: true,
+                                suffixIcon: _selectedDate != null || _birthDateController.text.isNotEmpty
+                                    ? IconButton(
+                                        icon: Icon(Icons.clear_rounded, color: Colors.grey.shade400),
+                                        onPressed: () {
+                                          setState(() {
+                                            _selectedDate = null;
+                                            _birthDateController.clear();
+                                          });
+                                        },
+                                      )
+                                    : Icon(Icons.calendar_today_rounded, color: Colors.grey.shade400, size: 20),
+                                onTap: () async {
+                                  final DateTime? picked = await showDatePicker(
+                                    context: context,
+                                    initialDate: _selectedDate ?? DateTime(1973, 1, 15),
+                                    firstDate: DateTime(1900),
+                                    lastDate: DateTime.now(),
+                                    builder: (context, child) {
+                                      return Theme(
+                                        data: Theme.of(context).copyWith(
+                                          colorScheme: ColorScheme.light(
+                                            primary: AppColors.authPrimary,
+                                            onPrimary: Colors.white,
+                                            onSurface: Colors.black,
+                                          ),
+                                          dialogBackgroundColor: Colors.white,
+                                        ),
+                                        child: child!,
+                                      );
+                                    },
+                                  );
+                                  if (picked != null) {
+                                    setState(() {
+                                      _selectedDate = picked;
+                                      _birthDateController.text = 
+                                        "${picked.day} ${_getMonthName(picked.month)} ${picked.year}";
+                                    });
+                                  }
+                                },
+                              ),
+                              const SizedBox(height: 16),
+
+                              // Nomor Telepon
+                              _buildModernFormField(
+                                label: "Nomor Telepon",
+                                controller: _phoneController,
+                                hint: "Masukkan nomor telepon (opsional)",
+                                prefixIcon: Icons.phone_outlined,
+                                keyboardType: TextInputType.phone,
+                              ),
+                              const SizedBox(height: 16),
+
+                              // Alamat
+                              _buildModernFormField(
+                                label: "Alamat",
+                                controller: _addressController,
+                                hint: "Masukkan alamat lengkap (opsional)",
+                                prefixIcon: Icons.location_on_outlined,
+                                maxLines: 4,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+
                                   const SizedBox(height: 20),
                                 ],
                               ),
@@ -336,60 +394,61 @@ class _EditProfilPageState extends State<EditProfilPage> {
             ),
           ],
         ),
+        bottomNavigationBar: _buildBottomButton(),
       ),
     );
   }
 
   Widget _buildHeader() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 50, 20, 24),
+      padding: const EdgeInsets.fromLTRB(16, 50, 16, 20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
             AppColors.authPrimary,
-            AppColors.authPrimary.withOpacity(0.85),
+            AppColors.authPrimary.withOpacity(0.8),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         boxShadow: [
           BoxShadow(
-            color: AppColors.authPrimary.withOpacity(0.3),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
+            color: AppColors.authPrimary.withOpacity(0.25),
+            blurRadius: 24,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
-      child: Center(
-        child: Container(
-          constraints: const BoxConstraints(maxWidth: 500),
-          child: Row(
-            children: [
+        child: Center(
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 500),
+            child: Row(
+              children: [
               IconButton(
-                onPressed: () => Navigator.pop(context),
+                    onPressed: () => Navigator.pop(context),
                 icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
                 style: IconButton.styleFrom(
                   backgroundColor: Colors.white.withOpacity(0.2),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "Edit Informasi Pribadi",
-                      style: GoogleFonts.nunitoSans(
-                        color: Colors.white,
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Edit Informasi Pribadi",
+                        style: GoogleFonts.nunitoSans(
+                          color: Colors.white,
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
                         letterSpacing: 0.3,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
           ),
         ),
       ),
@@ -406,69 +465,199 @@ class _EditProfilPageState extends State<EditProfilPage> {
     int maxLines = 1,
     String? Function(String?)? validator,
     Widget? suffixIcon,
+    IconData? prefixIcon,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: GoogleFonts.nunitoSans(
-            fontSize: 14,
-            fontWeight: FontWeight.w700,
-            color: const Color(0xFF2D473E),
-            letterSpacing: 0.3,
-          ),
+        Row(
+          children: [
+            if (prefixIcon != null) ...[
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: AppColors.authPrimary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  prefixIcon,
+                  size: 16,
+                  color: AppColors.authPrimary,
+                ),
+              ),
+              const SizedBox(width: 10),
+            ],
+            Text(
+              label,
+              style: GoogleFonts.nunitoSans(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF2D473E),
+                letterSpacing: 0.2,
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 10),
-        TextFormField(
-          controller: controller,
-          readOnly: readOnly,
-          onTap: onTap,
-          keyboardType: keyboardType,
-          maxLines: maxLines,
-          style: GoogleFonts.nunitoSans(
-            fontSize: 15,
-            fontWeight: FontWeight.w500,
-            color: const Color(0xFF2D473E),
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.03),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
-          decoration: InputDecoration(
-            hintText: hint,
-            hintStyle: GoogleFonts.nunitoSans(
-              color: Colors.grey.shade400,
-              fontSize: 14,
+          child: TextFormField(
+            controller: controller,
+            readOnly: readOnly,
+            onTap: onTap,
+            keyboardType: keyboardType,
+            maxLines: maxLines,
+            style: GoogleFonts.nunitoSans(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: const Color(0xFF2D473E),
             ),
-            filled: true,
-            fillColor: Colors.white,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide(color: Colors.grey.shade200, width: 1.5),
+            decoration: InputDecoration(
+              hintText: hint,
+              hintStyle: GoogleFonts.nunitoSans(
+                color: Colors.grey.shade400,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+              filled: true,
+              fillColor: Colors.white,
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: maxLines > 1 ? 14 : 16,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: Colors.grey.shade200, width: 1.5),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: Colors.grey.shade200, width: 1.5),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: AppColors.authPrimary, width: 2.5),
+              ),
+              errorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: Colors.red.shade300, width: 1.5),
+              ),
+              focusedErrorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: const BorderSide(color: Colors.red, width: 2.5),
+              ),
+              errorStyle: GoogleFonts.nunitoSans(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+              suffixIcon: suffixIcon,
             ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide(color: Colors.grey.shade200, width: 1.5),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide(color: AppColors.authPrimary, width: 2),
-            ),
-            errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide(color: Colors.red.shade300, width: 1.5),
-            ),
-            focusedErrorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: const BorderSide(color: Colors.red, width: 2),
-            ),
-            errorStyle: GoogleFonts.nunitoSans(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-            ),
-            suffixIcon: suffixIcon,
+            validator: validator,
           ),
-          validator: validator,
         ),
       ],
+    );
+  }
+
+  Widget _buildBottomButton() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            offset: const Offset(0, -4),
+            blurRadius: 20,
+          ),
+        ],
+      ),
+      child: SafeArea(
+        child: BlocBuilder<PersonalInfoBloc, PersonalInfoState>(
+          builder: (context, state) {
+            final isLoading = state is PersonalInfoLoading;
+            return Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                gradient: LinearGradient(
+                  colors: [
+                    AppColors.authPrimary,
+                    AppColors.authPrimary.withOpacity(0.85),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.authPrimary.withOpacity(0.4),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: ElevatedButton(
+                onPressed: isLoading ? null : _saveChanges,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  foregroundColor: Colors.white,
+                  shadowColor: Colors.transparent,
+                  padding: const EdgeInsets.symmetric(vertical: 18),
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  disabledBackgroundColor: Colors.grey.shade300,
+                ),
+                child: isLoading
+                    ? Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.5,
+                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            "Menyimpan...",
+                            style: GoogleFonts.nunitoSans(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
+                      )
+                    : Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.check_circle_outline, size: 22),
+                          const SizedBox(width: 10),
+                          Text(
+                            "Simpan Perubahan",
+                            style: GoogleFonts.nunitoSans(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                              letterSpacing: 0.3,
+                            ),
+                          ),
+                        ],
+                      ),
+              ),
+            );
+          },
+        ),
+      ),
     );
   }
 
@@ -518,6 +707,8 @@ class _EditProfilPageState extends State<EditProfilPage> {
       birthDate: formattedBirthDate,
       phone: _phoneController.text.trim().isEmpty ? null : _phoneController.text.trim(),
       address: _addressController.text.trim().isEmpty ? null : _addressController.text.trim(),
+      weight: double.tryParse(_weightController.text),
+      height: double.tryParse(_heightController.text),
     );
 
     // Jika profil sudah ada, gunakan PUT (update) - semua field optional

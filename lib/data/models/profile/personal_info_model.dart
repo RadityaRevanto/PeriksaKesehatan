@@ -33,29 +33,29 @@ class PersonalInfoModel {
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'name': name,
-      'birth_date': birthDate,
-      'phone': phone,
-      'address': address,
-      'photo_url': photoUrl,
-      'weight': weight,
-      'height': height,
-      'age': age,
-    };
+    final Map<String, dynamic> data = <String, dynamic>{};
+    if (name != null) data['name'] = name;
+    if (birthDate != null) data['birth_date'] = birthDate;
+    if (phone != null) data['phone'] = phone;
+    if (address != null) data['address'] = address;
+    if (photoUrl != null) data['photo_url'] = photoUrl;
+    if (weight != null) data['weight'] = weight;
+    if (height != null) data['height'] = height;
+    if (age != null) data['age'] = age;
+    return data;
   }
 
   /// toJson untuk create - memastikan name dan birth_date selalu ada (minimal string kosong)
   Map<String, dynamic> toJsonForCreate() {
-    return {
-      'name': name ?? '',
-      'birth_date': birthDate ?? '',
-      'phone': phone,
-      'address': address,
-      'photo_url': photoUrl,
-      'weight': weight,
-      'height': height,
-      'age': age,
-    };
+    final Map<String, dynamic> data = <String, dynamic>{};
+    data['name'] = name ?? '';
+    data['birth_date'] = birthDate ?? '';
+    if (phone != null) data['phone'] = phone;
+    if (address != null) data['address'] = address;
+    if (photoUrl != null) data['photo_url'] = photoUrl;
+    if (weight != null) data['weight'] = weight;
+    if (height != null) data['height'] = height;
+    if (age != null) data['age'] = age;
+    return data;
   }
 }

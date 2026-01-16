@@ -27,6 +27,7 @@ class HealthRemoteDataSourceImpl implements HealthRemoteDataSource {
 
   @override
   Future<HealthDataModel> saveHealthData(HealthDataModel healthData) async {
+    final url = Uri.parse('${ApiEndpoints.baseUrl}${ApiEndpoints.saveHealthData}');
     try {
       // Get token dari storage
       final token = await storageService.getToken();
@@ -37,7 +38,8 @@ class HealthRemoteDataSourceImpl implements HealthRemoteDataSource {
         );
       }
 
-      final url = Uri.parse('${ApiEndpoints.baseUrl}${ApiEndpoints.saveHealthData}');
+      print('REMOTE REQ: POST $url');
+      print('REMOTE BODY: ${jsonEncode(healthData.toJson())}');
       
       final response = await client.post(
         url,
@@ -47,6 +49,8 @@ class HealthRemoteDataSourceImpl implements HealthRemoteDataSource {
         },
         body: jsonEncode(healthData.toJson()),
       );
+
+      print('REMOTE RES: ${response.statusCode}');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final jsonResponse = jsonDecode(response.body);
@@ -60,7 +64,7 @@ class HealthRemoteDataSourceImpl implements HealthRemoteDataSource {
         return HealthDataModel.fromJson(jsonResponse);
       } else {
         print('REMOTE ERROR: ${response.statusCode}');
-        print('REMOTE BODY: ${response.body}');
+        print('REMOTE ERROR BODY: ${response.body}');
         final errorBody = jsonDecode(response.body);
         throw ApiException(
           message: errorBody['message'] ?? 'Gagal menyimpan data kesehatan',
@@ -68,6 +72,7 @@ class HealthRemoteDataSourceImpl implements HealthRemoteDataSource {
         );
       }
     } catch (e) {
+      print('REMOTE EXCEPTION: $e at $url');
       if (e is ApiException) {
         rethrow;
       }

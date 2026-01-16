@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:periksa_kesehatan/core/constants/app_colors.dart';
+import 'package:periksa_kesehatan/core/di/injection_container.dart';
 import 'package:periksa_kesehatan/pages/auth/register/register_page.dart';
 import 'package:periksa_kesehatan/presentation/bloc/auth/auth_bloc.dart';
 import 'package:periksa_kesehatan/presentation/bloc/auth/auth_event.dart';
 import 'package:periksa_kesehatan/presentation/bloc/auth/auth_state.dart';
+import 'package:periksa_kesehatan/services/remember_me_service.dart';
 import 'package:periksa_kesehatan/widgets/common/bottom_nav_bar.dart';
 
 class LoginPage extends StatefulWidget {
@@ -22,10 +24,17 @@ class _LoginPageState extends State<LoginPage> {
   bool _rememberMe = false;
   bool _obscurePassword = true;
   String? _lastErrorMessage;
+  late final RememberMeService _rememberMeService;
 
   @override
   void initState() {
     super.initState();
+    // Initialize RememberMeService
+    _rememberMeService = sl<RememberMeService>();
+    
+    // Load saved credentials if "Remember Me" was enabled
+    _loadSavedCredentials();
+    
     // Cek jika state saat ini adalah AuthError saat halaman pertama kali di-render
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -35,6 +44,18 @@ class _LoginPageState extends State<LoginPage> {
         _showErrorDialog(context, currentState.message);
       }
     });
+  }
+  
+  /// Load saved credentials from RememberMeService
+  void _loadSavedCredentials() {
+    if (_rememberMeService.isRememberMeEnabled()) {
+      final credentials = _rememberMeService.getSavedCredentials();
+      setState(() {
+        _rememberMe = true;
+        _identifierController.text = credentials['identifier'] ?? '';
+        _passwordController.text = credentials['password'] ?? '';
+      });
+    }
   }
 
   @override
@@ -329,32 +350,32 @@ class _LoginPageState extends State<LoginPage> {
                               ),
                       ),
 
-                      const SizedBox(height: 20),
-
-                      /// DIVIDER
-                      Row(
-                        children: const [
-                          Expanded(child: Divider()),
-                          Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 10),
-                            child: Text('Atau Masuk dengan'),
-                          ),
-                          Expanded(child: Divider()),
-                        ],
-                      ),
-
-                      const SizedBox(height: 20),
-
-                      /// SOCIAL LOGIN
-                      Row(
-                        children: [
-                          buildSocialButton('G', 'Google'),
-                          const SizedBox(width: 10),
-                          buildSocialButton('f', 'Facebook'),
-                        ],
-                      ),
-
                       const SizedBox(height: 24),
+
+                      // /// DIVIDER
+                      // Row(
+                      //   children: const [
+                      //     Expanded(child: Divider()),
+                      //     Padding(
+                      //       padding: EdgeInsets.symmetric(horizontal: 10),
+                      //       child: Text('Atau Masuk dengan'),
+                      //     ),
+                      //     Expanded(child: Divider()),
+                      //   ],
+                      // ),
+
+                      // const SizedBox(height: 20),
+
+                      // /// SOCIAL LOGIN
+                      // Row(
+                      //   children: [
+                      //     buildSocialButton('G', 'Google'),
+                      //     const SizedBox(width: 10),
+                      //     buildSocialButton('f', 'Facebook'),
+                      //   ],
+                      // ),
+
+                      // const SizedBox(height: 24),
 
                       /// REGISTER LINK
                       GestureDetector(
@@ -398,14 +419,24 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  void _handleLogin() {
+  void _handleLogin() async {
     if (_formKey.currentState!.validate()) {
-      context.read<AuthBloc>().add(
-            LoginEvent(
-              identifier: _identifierController.text.trim(),
-              password: _passwordController.text,
-            ),
-          );
+      // Save or clear credentials based on "Remember Me" checkbox
+      await _rememberMeService.saveCredentials(
+        identifier: _identifierController.text.trim(),
+        password: _passwordController.text,
+        rememberMe: _rememberMe,
+      );
+      
+      // Proceed with login
+      if (mounted) {
+        context.read<AuthBloc>().add(
+              LoginEvent(
+                identifier: _identifierController.text.trim(),
+                password: _passwordController.text,
+              ),
+            );
+      }
     }
   }
 

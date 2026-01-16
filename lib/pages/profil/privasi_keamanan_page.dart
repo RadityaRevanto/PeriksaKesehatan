@@ -123,57 +123,57 @@ class _PrivasiKeamananPageState extends State<PrivasiKeamananPage> {
             subtitle: "Terakhir diubah 30 hari yang lalu",
             onTap: () => _showChangePasswordDialog(),
           ),
-          _buildDivider(),
-          _buildSwitchTile(
-            icon: Icons.fingerprint,
-            title: "Autentikasi Biometrik",
-            subtitle: "Gunakan sidik jari atau Face ID",
-            value: _biometricEnabled,
-            onChanged: (value) {
-              setState(() {
-                _biometricEnabled = value;
-              });
-              _showSnackBar(
-                value
-                    ? "Autentikasi biometrik diaktifkan"
-                    : "Autentikasi biometrik dinonaktifkan",
-              );
-            },
-          ),
-          _buildDivider(),
-          _buildSwitchTile(
-            icon: Icons.verified_user_outlined,
-            title: "Verifikasi Dua Langkah",
-            subtitle: "Tambahkan lapisan keamanan ekstra",
-            value: _twoFactorEnabled,
-            onChanged: (value) {
-              setState(() {
-                _twoFactorEnabled = value;
-              });
-              if (value) {
-                _showTwoFactorSetupDialog();
-              } else {
-                _showSnackBar("Verifikasi dua langkah dinonaktifkan");
-              }
-            },
-          ),
-          _buildDivider(),
-          _buildSwitchTile(
-            icon: Icons.enhanced_encryption_outlined,
-            title: "Enkripsi Data",
-            subtitle: "Data kesehatan Anda dienkripsi",
-            value: _dataEncryptionEnabled,
-            onChanged: (value) {
-              setState(() {
-                _dataEncryptionEnabled = value;
-              });
-              _showSnackBar(
-                value
-                    ? "Enkripsi data diaktifkan"
-                    : "Enkripsi data dinonaktifkan",
-              );
-            },
-          ),
+          // _buildDivider(),
+          // _buildSwitchTile(
+          //   icon: Icons.fingerprint,
+          //   title: "Autentikasi Biometrik",
+          //   subtitle: "Gunakan sidik jari atau Face ID",
+          //   value: _biometricEnabled,
+          //   onChanged: (value) {
+          //     setState(() {
+          //       _biometricEnabled = value;
+          //     });
+          //     _showSnackBar(
+          //       value
+          //           ? "Autentikasi biometrik diaktifkan"
+          //           : "Autentikasi biometrik dinonaktifkan",
+          //     );
+          //   },
+          // ),
+          // _buildDivider(),
+          // _buildSwitchTile(
+          //   icon: Icons.verified_user_outlined,
+          //   title: "Verifikasi Dua Langkah",
+          //   subtitle: "Tambahkan lapisan keamanan ekstra",
+          //   value: _twoFactorEnabled,
+          //   onChanged: (value) {
+          //     setState(() {
+          //       _twoFactorEnabled = value;
+          //     });
+          //     if (value) {
+          //       _showTwoFactorSetupDialog();
+          //     } else {
+          //       _showSnackBar("Verifikasi dua langkah dinonaktifkan");
+          //     }
+          //   },
+          // ),
+          // _buildDivider(),
+          // _buildSwitchTile(
+          //   icon: Icons.enhanced_encryption_outlined,
+          //   title: "Enkripsi Data",
+          //   subtitle: "Data kesehatan Anda dienkripsi",
+          //   value: _dataEncryptionEnabled,
+          //   onChanged: (value) {
+          //     setState(() {
+          //       _dataEncryptionEnabled = value;
+          //     });
+          //     _showSnackBar(
+          //       value
+          //           ? "Enkripsi data diaktifkan"
+          //           : "Enkripsi data dinonaktifkan",
+          //     );
+          //   },
+          // ),
           _buildDivider(),
           _buildSettingTile(
             icon: Icons.devices_outlined,
@@ -212,38 +212,38 @@ class _PrivasiKeamananPageState extends State<PrivasiKeamananPage> {
               );
             },
           ),
-          _buildDivider(),
-          _buildSwitchTile(
-            icon: Icons.science_outlined,
-            title: "Bagikan Data untuk Riset",
-            subtitle: "Data anonim untuk penelitian kesehatan",
-            value: _shareDataForResearch,
-            onChanged: (value) {
-              setState(() {
-                _shareDataForResearch = value;
-              });
-              _showSnackBar(
-                value
-                    ? "Berbagi data untuk riset diaktifkan"
-                    : "Berbagi data untuk riset dinonaktifkan",
-              );
-            },
-          ),
-          _buildDivider(),
-          _buildSwitchTile(
-            icon: Icons.public_outlined,
-            title: "Profil Publik",
-            subtitle: "Tampilkan profil Anda secara publik",
-            value: _showProfilePublicly,
-            onChanged: (value) {
-              setState(() {
-                _showProfilePublicly = value;
-              });
-              _showSnackBar(
-                value ? "Profil publik diaktifkan" : "Profil publik dinonaktifkan",
-              );
-            },
-          ),
+          // _buildDivider(),
+          // _buildSwitchTile(
+          //   icon: Icons.science_outlined,
+          //   title: "Bagikan Data untuk Riset",
+          //   subtitle: "Data anonim untuk penelitian kesehatan",
+          //   value: _shareDataForResearch,
+          //   onChanged: (value) {
+          //     setState(() {
+          //       _shareDataForResearch = value;
+          //     });
+          //     _showSnackBar(
+          //       value
+          //           ? "Berbagi data untuk riset diaktifkan"
+          //           : "Berbagi data untuk riset dinonaktifkan",
+          //     );
+          //   },
+          // ),
+          // _buildDivider(),
+          // _buildSwitchTile(
+          //   icon: Icons.public_outlined,
+          //   title: "Profil Publik",
+          //   subtitle: "Tampilkan profil Anda secara publik",
+          //   value: _showProfilePublicly,
+          //   onChanged: (value) {
+          //     setState(() {
+          //       _showProfilePublicly = value;
+          //     });
+          //     _showSnackBar(
+          //       value ? "Profil publik diaktifkan" : "Profil publik dinonaktifkan",
+          //     );
+          //   },
+          // ),
           _buildDivider(),
           _buildSettingTile(
             icon: Icons.download_outlined,

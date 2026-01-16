@@ -2,9 +2,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shimmer/shimmer.dart';
 
 import 'package:periksa_kesehatan/core/constants/app_colors.dart';
 import 'package:periksa_kesehatan/widgets/cards/health_metric_card.dart';
+import 'package:periksa_kesehatan/widgets/calendar/custom_calendar_picker.dart';
 import 'package:periksa_kesehatan/pages/input/input_data_kesehatan_page.dart';
 import 'package:periksa_kesehatan/pages/peringatan-kesehatan/peringatan_kesehatan_page.dart';
 import 'package:periksa_kesehatan/presentation/bloc/health/health_bloc.dart';
@@ -15,6 +17,11 @@ import 'package:periksa_kesehatan/data/models/health/health_alert_model.dart';
 import 'package:periksa_kesehatan/data/models/health/health_summary_model.dart';
 import 'package:periksa_kesehatan/presentation/bloc/auth/auth_bloc.dart';
 import 'package:periksa_kesehatan/presentation/bloc/auth/auth_state.dart';
+import 'package:periksa_kesehatan/presentation/bloc/personal_info/personal_info_bloc.dart';
+import 'package:periksa_kesehatan/presentation/bloc/personal_info/personal_info_state.dart';
+
+import 'package:periksa_kesehatan/core/di/injection_container.dart';
+import 'package:periksa_kesehatan/services/health_sync_service.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -30,11 +37,44 @@ class _HomePageState extends State<HomePage> {
   HealthData? _latestHealthData;
   HealthSummaryModel? _healthHistory;
   HealthAlertsModel? _healthAlerts;
+  
+  // Connectivity tracking for shimmer effect
+  bool? _previousConnectivityState;
+  bool _isTransitioning = false;
+  StreamSubscription<bool>? _connectivitySubscription;
 
   @override
   void initState() {
     super.initState();
     _currentTime = DateTime.now();
+    
+    // Listen to connectivity changes
+    _connectivitySubscription = sl<HealthSyncService>().connectivityStream.listen((isOnline) {
+      print('🌐 CONNECTIVITY CHANGED: ${isOnline ? "ONLINE" : "OFFLINE"}');
+      
+      if (_previousConnectivityState != null && _previousConnectivityState != isOnline) {
+        print('🔄 Refreshing data due to connectivity change...');
+        
+        // Refresh data FIRST
+        context.read<HealthBloc>().add(FetchHealthHistoryEvent(timeRange: '7Days'));
+        
+        // Then show shimmer effect
+        setState(() {
+          _isTransitioning = true;
+        });
+        
+        // Hide shimmer after 1.5 seconds
+        Future.delayed(const Duration(milliseconds: 1500), () {
+          if (mounted) {
+            setState(() {
+              _isTransitioning = false;
+            });
+          }
+        });
+      }
+      _previousConnectivityState = isOnline;
+    });
+    
     // Update setiap detik untuk:
     // 1. Update tanggal/waktu di header (jika tidak manual date)
     // 2. Update "X menit/jam lalu" secara real-time
@@ -49,6 +89,13 @@ class _HomePageState extends State<HomePage> {
     
     // Fetch health data saat page load
     _fetchHealthData();
+
+    // Initialize synchronization service
+    try {
+      sl<HealthSyncService>().init();
+    } catch (e) {
+      debugPrint("Sync Service Init Error: $e");
+    }
   }
 
   void _fetchHealthData() {
@@ -65,6 +112,7 @@ class _HomePageState extends State<HomePage> {
   @override
   void dispose() {
     _timer.cancel();
+    _connectivitySubscription?.cancel();
     super.dispose();
   }
 
@@ -79,6 +127,18 @@ class _HomePageState extends State<HomePage> {
     } else {
       return 'Selamat Malam,';
     }
+  }
+
+  /// Wrap widget with shimmer effect during connectivity transition
+  Widget _buildWithShimmer(Widget child) {
+    if (!_isTransitioning) return child;
+    
+    return Shimmer.fromColors(
+      baseColor: Colors.grey[300]!,
+      highlightColor: Colors.grey[100]!,
+      period: const Duration(milliseconds: 1500),
+      child: child,
+    );
   }
 
   String _getFormattedDate() {
@@ -97,74 +157,78 @@ class _HomePageState extends State<HomePage> {
     return '$dayName, $day $monthName $year';
   }
 
-  Future<void> _showDatePicker() async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: _currentTime,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
-      locale: const Locale('id', 'ID'),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: AppColors.primary,
-              onPrimary: Colors.white,
-              onSurface: Colors.black,
-            ),
-            textButtonTheme: TextButtonThemeData(
-              style: TextButton.styleFrom(
-                foregroundColor: AppColors.primary,
-              ),
-            ),
-          ),
-          child: child!,
-        );
-      },
-    );
+  String _getFormattedDateShort(DateTime date) {
+    // Format: 10 Januari 2026
+    final monthNames = [
+      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+    ];
+    
+    final day = date.day;
+    final monthName = monthNames[date.month - 1];
+    final year = date.year;
+    
+    return '$day $monthName $year';
+  }
 
-    if (picked != null) {
-      setState(() {
-        _currentTime = picked;
-        _isManualDate = true; // Set flag bahwa tanggal dipilih manual
-      });
-      
-      // Fetch data dengan filter tanggal
-      _fetchHealthData();
-      
-      // Show snackbar dengan tanggal yang dipilih
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Menampilkan data: ${_getFormattedDate()}',
-              style: GoogleFonts.nunitoSans(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
+  Future<void> _showDatePicker() async {
+    await showDialog(
+      context: context,
+      builder: (context) => CustomCalendarPicker(
+        initialDate: _currentTime,
+        firstDate: DateTime(2000),
+        lastDate: DateTime(2100),
+        onDateSelected: (picked) {
+          setState(() {
+            _currentTime = picked;
+            _isManualDate = true;
+          });
+          
+          // Fetch data dengan filter tanggal
+          _fetchHealthData();
+          
+          // Show snackbar
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Menampilkan data: ${_getFormattedDate()}',
+                  style: GoogleFonts.nunitoSans(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                backgroundColor: AppColors.primary,
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                duration: const Duration(seconds: 3),
+                action: SnackBarAction(
+                  label: 'Kembali ke Hari Ini',
+                  textColor: Colors.white,
+                  onPressed: () {
+                    setState(() {
+                      _currentTime = DateTime.now();
+                      _isManualDate = false;
+                    });
+                    _fetchHealthData();
+                  },
+                ),
               ),
-            ),
-            backgroundColor: AppColors.primary,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            duration: const Duration(seconds: 3),
-            action: SnackBarAction(
-              label: 'Kembali ke Hari Ini',
-              textColor: Colors.white,
-              onPressed: () {
-                setState(() {
-                  _currentTime = DateTime.now();
-                  _isManualDate = false; // Kembali ke mode real-time
-                });
-                // Refresh data untuk hari ini
-                _fetchHealthData();
-              },
-            ),
-          ),
-        );
-      }
-    }
+            );
+          }
+        },
+        onDateReset: () {
+          setState(() {
+            _currentTime = DateTime.now();
+            _isManualDate = false; // Kembali ke mode real-time
+          });
+          // Refresh data untuk hari ini
+          _fetchHealthData();
+        },
+      ),
+    );
   }
 
   @override
@@ -203,17 +267,28 @@ class _HomePageState extends State<HomePage> {
                               ),
                             ),
                             const SizedBox(height: 4),
-                            BlocBuilder<AuthBloc, AuthState>(
-                              builder: (context, state) {
+                            BlocBuilder<PersonalInfoBloc, PersonalInfoState>(
+                              builder: (context, personalInfoState) {
                                 String name = 'Pengguna'; // Default name
-                                if (state is AuthAuthenticated) {
-                                  name = state.name;
+                                
+                                // Prioritas 1: Ambil dari PersonalInfoBloc (data profil lengkap)
+                                if (personalInfoState is PersonalInfoLoaded && 
+                                    personalInfoState.personalInfo?.name != null &&
+                                    personalInfoState.personalInfo!.name!.isNotEmpty) {
+                                  name = personalInfoState.personalInfo!.name!;
+                                } else {
+                                  // Fallback ke AuthBloc jika profil belum ada
+                                  final authState = context.read<AuthBloc>().state;
+                                  if (authState is AuthAuthenticated) {
+                                    name = authState.name;
+                                  }
                                 }
+                                
                                 return Text(
                                   name,
                                   style: GoogleFonts.nunitoSans(
                                     color: Colors.white,
-                                    fontSize: 28,
+                                    fontSize: 20,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 );
@@ -221,43 +296,122 @@ class _HomePageState extends State<HomePage> {
                             ),
                           ],
                         ),
-                        GestureDetector(
-                          onTap: _showDatePicker,
-                          child: Stack(
-                            clipBehavior: Clip.none,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(10),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.2),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: const Icon(
-                                  Icons.calendar_today,
-                                  color: Colors.white,
-                                  size: 24,
-                                ),
-                              ),
-                              // Badge indicator untuk manual date
-                              if (_isManualDate)
-                                Positioned(
-                                  right: -4,
-                                  top: -4,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(4),
-                                    decoration: const BoxDecoration(
-                                      color: Colors.orange,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Icon(
-                                      Icons.edit,
-                                      color: Colors.white,
-                                      size: 10,
+                        Row(
+                          children: [
+                            // Connectivity Status (Online/Offline)
+                            StreamBuilder<bool>(
+                              stream: sl<HealthSyncService>().connectivityStream,
+                              builder: (context, snapshot) {
+                                // Only show badge when we have actual data
+                                if (!snapshot.hasData) {
+                                  return const SizedBox(width: 8); // Placeholder while loading
+                                }
+                                
+                                final isOnline = snapshot.data!;
+                                return Container(
+                                  margin: const EdgeInsets.only(right: 8),
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                                  decoration: BoxDecoration(
+                                    color: isOnline 
+                                        ? Colors.green.withOpacity(0.25) 
+                                        : Colors.orange.withOpacity(0.3),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(
+                                      color: isOnline ? Colors.greenAccent : Colors.orangeAccent,
+                                      width: 1.5,
                                     ),
                                   ),
-                                ),
-                            ],
-                          ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        isOnline ? Icons.wifi : Icons.wifi_off,
+                                        color: isOnline ? Colors.greenAccent : Colors.orangeAccent,
+                                        size: 16,
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        isOnline ? 'Online' : 'Offline',
+                                        style: GoogleFonts.nunitoSans(
+                                          color: isOnline ? Colors.greenAccent : Colors.orangeAccent,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+                            // Sync Status Icon
+                            StreamBuilder<SyncStatus>(
+                              stream: sl<HealthSyncService>().syncStatusStream,
+                              builder: (context, snapshot) {
+                                final status = snapshot.data ?? SyncStatus.idle;
+                                if (status == SyncStatus.idle) return const SizedBox.shrink();
+                                return Container(
+                                  margin: const EdgeInsets.only(right: 8),
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: status == SyncStatus.syncing
+                                      ? const SizedBox(
+                                          width: 16, 
+                                          height: 16, 
+                                          child: CircularProgressIndicator(
+                                            color: Colors.white, 
+                                            strokeWidth: 2,
+                                          )
+                                        )
+                                      : Icon(
+                                          status == SyncStatus.synced ? Icons.cloud_done : Icons.cloud_off,
+                                          color: status == SyncStatus.synced ? Colors.white : Colors.orangeAccent, 
+                                          size: 16,
+                                        ),
+                                );
+                              },
+                            ),
+                            GestureDetector(
+                              onTap: _showDatePicker,
+                              child: Stack(
+                                clipBehavior: Clip.none,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withOpacity(0.2),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: const Icon(
+                                      Icons.calendar_today,
+                                      color: Colors.white,
+                                      size: 24,
+                                    ),
+                                  ),
+                                  // Badge indicator untuk manual date
+                                  if (_isManualDate)
+                                    Positioned(
+                                      right: -4,
+                                      top: -4,
+                                      child: Container(
+                                        padding: const EdgeInsets.all(4),
+                                        decoration: const BoxDecoration(
+                                          color: Colors.orange,
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(
+                                          Icons.edit,
+                                          color: Colors.white,
+                                          size: 10,
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -308,12 +462,7 @@ class _HomePageState extends State<HomePage> {
                       },
                       builder: (context, state) {
                         if (state is HealthLoading) {
-                          return const Center(
-                            child: Padding(
-                              padding: EdgeInsets.all(40.0),
-                              child: CircularProgressIndicator(),
-                            ),
-                          );
+                          return _buildShimmerSkeleton();
                         } 
                         
                         // If manual date is selected, use history data
@@ -321,9 +470,59 @@ class _HomePageState extends State<HomePage> {
                           return _buildHealthMetricsFromHistoryData();
                         }
                         
-                        // Show latest data if not filtering by date
+                        // Show latest data ONLY if it's from the selected date
                         if (_latestHealthData != null) {
-                          return _buildHealthMetrics(_latestHealthData);
+                          // Check if data is from the selected date (_currentTime)
+                          final selectedDate = _currentTime;
+                          final dataDate = _latestHealthData!.date;
+                          
+                          print('🔍 HOMEPAGE DATE COMPARISON:');
+                          print('   Selected date: ${selectedDate.year}-${selectedDate.month}-${selectedDate.day}');
+                          print('   Data date: ${dataDate.year}-${dataDate.month}-${dataDate.day}');
+                          print('   _isManualDate: $_isManualDate');
+                          
+                          final isSelectedDate = dataDate.year == selectedDate.year &&
+                              dataDate.month == selectedDate.month &&
+                              dataDate.day == selectedDate.day;
+                          
+                          print('   isSelectedDate: $isSelectedDate');
+                          
+                          // If data is from selected date, show it
+                          if (isSelectedDate) {
+                            return _buildHealthMetrics(_latestHealthData);
+                          }
+                          
+                          // If data is NOT from selected date, show empty state
+                          return Column(
+                            children: [
+                              _buildHealthMetrics(null),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.inbox_outlined,
+                                      size: 20,
+                                      color: Colors.grey[400],
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Flexible(
+                                      child: Text(
+                                        'Tidak ada data untuk tanggal ${_getFormattedDate()}',
+                                        style: GoogleFonts.nunitoSans(
+                                          color: Colors.grey[600],
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          );
                         }
                         
                         // Handle empty data state (new users or no data for selected date)
@@ -577,7 +776,7 @@ class _HomePageState extends State<HomePage> {
                                       context,
                                       MaterialPageRoute(
                                         builder: (context) =>
-                                            const InputDataKesehatanPage(),
+                                            InputDataKesehatanPage(selectedDate: _currentTime),
                                       ),
                                     );
                                     // Refresh data setelah kembali
@@ -596,7 +795,7 @@ class _HomePageState extends State<HomePage> {
                                       context,
                                       MaterialPageRoute(
                                         builder: (context) =>
-                                            const InputDataKesehatanPage(),
+                                            InputDataKesehatanPage(selectedDate: _currentTime),
                                       ),
                                     );
                                     _fetchHealthData();
@@ -618,7 +817,7 @@ class _HomePageState extends State<HomePage> {
                                       context,
                                       MaterialPageRoute(
                                         builder: (context) =>
-                                            const InputDataKesehatanPage(),
+                                            InputDataKesehatanPage(selectedDate: _currentTime),
                                       ),
                                     );
                                     _fetchHealthData();
@@ -636,7 +835,7 @@ class _HomePageState extends State<HomePage> {
                                       context,
                                       MaterialPageRoute(
                                         builder: (context) =>
-                                            const InputDataKesehatanPage(),
+                                            InputDataKesehatanPage(selectedDate: _currentTime),
                                       ),
                                     );
                                     _fetchHealthData();
@@ -664,7 +863,7 @@ class _HomePageState extends State<HomePage> {
           await Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => const InputDataKesehatanPage(),
+              builder: (context) => InputDataKesehatanPage(selectedDate: _currentTime),
             ),
           );
           _fetchHealthData();
@@ -841,40 +1040,128 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  /// Build shimmer skeleton for loading state
+  Widget _buildShimmerSkeleton() {
+    return Shimmer.fromColors(
+      baseColor: Colors.grey[300]!,
+      highlightColor: Colors.grey[100]!,
+      period: const Duration(milliseconds: 1500),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: HealthMetricCard(
+                  icon: Icons.favorite,
+                  iconColor: AppColors.heartRate,
+                  iconBgColor: AppColors.heartRateBg,
+                  title: 'Tekanan Darah',
+                  value: '120',
+                  unit: '/80',
+                  subtitle: 'Loading...',
+                  statusText: 'Normal',
+                  statusColor: AppColors.success,
+                  changeIndicator: '',
+                  changeColor: AppColors.heartRate,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: HealthMetricCard(
+                  icon: Icons.water_drop,
+                  iconColor: AppColors.bloodSugar,
+                  iconBgColor: AppColors.bloodSugarBg,
+                  title: 'Gula Darah',
+                  value: '100',
+                  unit: 'mg/dL',
+                  subtitle: 'Loading...',
+                  statusText: 'Normal',
+                  statusColor: AppColors.success,
+                  changeIndicator: '',
+                  changeColor: AppColors.bloodSugar,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: HealthMetricCard(
+                  icon: Icons.monitor_weight,
+                  iconColor: AppColors.weight,
+                  iconBgColor: AppColors.weightBg,
+                  title: 'Berat Badan',
+                  value: '70',
+                  unit: 'kg',
+                  subtitle: 'Loading...',
+                  statusText: 'Normal',
+                  statusColor: AppColors.success,
+                  changeIndicator: '',
+                  changeColor: AppColors.weight,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: HealthMetricCard(
+                  icon: Icons.directions_walk,
+                  iconColor: AppColors.activity,
+                  iconBgColor: AppColors.activityBg,
+                  title: 'Aktivitas',
+                  value: 'Ringan',
+                  unit: '',
+                  subtitle: 'Loading...',
+                  statusText: 'Normal',
+                  statusColor: AppColors.success,
+                  changeIndicator: '',
+                  changeColor: AppColors.activity,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildHealthMetrics(HealthData? data) {
     return Column(
       children: [
         Row(
           children: [
             Expanded(
-              child: HealthMetricCard(
-                icon: Icons.favorite,
-                iconColor: AppColors.heartRate,
-                iconBgColor: AppColors.heartRateBg,
-                title: 'Tekanan Darah',
-                value: data?.systolic?.toString() ?? '--',
-                unit: data?.diastolic != null ? '/${data!.diastolic}' : '',
-                subtitle: data != null ? _getTimeAgo(data.date) : 'Belum ada data',
-                statusText: _getBloodPressureStatus(data?.systolic, data?.diastolic),
-                statusColor: _getBloodPressureColor(data?.systolic, data?.diastolic),
-                changeIndicator: '',
-                changeColor: AppColors.heartRate,
+              child: _buildWithShimmer(
+                HealthMetricCard(
+                  icon: Icons.favorite,
+                  iconColor: AppColors.heartRate,
+                  iconBgColor: AppColors.heartRateBg,
+                  title: 'Tekanan Darah',
+                  value: data?.systolic?.toString() ?? '--',
+                  unit: data?.diastolic != null ? '/${data!.diastolic}' : '',
+                  subtitle: data != null ? _getTimeAgo(data.date) : 'Belum ada data',
+                  statusText: _getBloodPressureStatus(data?.systolic, data?.diastolic),
+                  statusColor: _getBloodPressureColor(data?.systolic, data?.diastolic),
+                  changeIndicator: '',
+                  changeColor: AppColors.heartRate,
+                ),
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: HealthMetricCard(
-                icon: Icons.water_drop,
-                iconColor: AppColors.bloodSugar,
-                iconBgColor: AppColors.bloodSugarBg,
-                title: 'Gula Darah',
-                value: data?.bloodSugar?.toString() ?? '--',
-                unit: data?.bloodSugar != null ? 'mg/dL' : '',
-                subtitle: data != null ? _getTimeAgo(data.date) : 'Belum ada data',
-                statusText: _getBloodSugarStatus(data?.bloodSugar),
-                statusColor: _getBloodSugarColor(data?.bloodSugar),
-                changeIndicator: '',
-                changeColor: AppColors.bloodSugar,
+              child: _buildWithShimmer(
+                HealthMetricCard(
+                  icon: Icons.water_drop,
+                  iconColor: AppColors.bloodSugar,
+                  iconBgColor: AppColors.bloodSugarBg,
+                  title: 'Gula Darah',
+                  value: data?.bloodSugar?.toString() ?? '--',
+                  unit: 'mg/dL',
+                  subtitle: data != null ? _getTimeAgo(data.date) : 'Belum ada data',
+                  statusText: _getBloodSugarStatus(data?.bloodSugar),
+                  statusColor: _getBloodSugarColor(data?.bloodSugar),
+                  changeIndicator: '',
+                  changeColor: AppColors.bloodSugar,
+                ),
               ),
             ),
           ],
@@ -883,34 +1170,38 @@ class _HomePageState extends State<HomePage> {
         Row(
           children: [
             Expanded(
-              child: HealthMetricCard(
-                icon: Icons.monitor_weight,
-                iconColor: AppColors.weight,
-                iconBgColor: AppColors.weightBg,
-                title: 'Berat Badan',
-                value: data?.weight?.toStringAsFixed(1) ?? '--',
-                unit: data?.weight != null ? 'kg' : '',
-                subtitle: data != null ? _getTimeAgo(data.date) : 'Belum ada data',
-                statusText: _getWeightStatus(data?.weight, data?.height),
-                statusColor: _getWeightStatusColor(data?.weight, data?.height),
-                changeIndicator: '',
-                changeColor: AppColors.weight,
+              child: _buildWithShimmer(
+                HealthMetricCard(
+                  icon: Icons.monitor_weight,
+                  iconColor: AppColors.weight,
+                  iconBgColor: AppColors.weightBg,
+                  title: 'Berat Badan',
+                  value: data?.weight?.toString() ?? '--',
+                  unit: 'kg',
+                  subtitle: data != null ? _getTimeAgo(data.date) : 'Belum ada data',
+                  statusText: _getWeightStatus(data?.weight, data?.height),
+                  statusColor: _getWeightStatusColor(data?.weight, data?.height),
+                  changeIndicator: '',
+                  changeColor: AppColors.weight,
+                ),
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: HealthMetricCard(
-                icon: Icons.directions_walk,
-                iconColor: AppColors.activity,
-                iconBgColor: AppColors.activityBg,
-                title: 'Aktivitas',
-                value: data?.activity ?? '--',
-                unit: '',
-                subtitle: data != null ? _getTimeAgo(data.date) : 'Belum ada data',
-                statusText: data?.activity != null ? 'Tercatat' : 'Belum ada',
-                statusColor: data?.activity != null ? AppColors.success : Colors.grey,
-                changeIndicator: '',
-                changeColor: AppColors.activity,
+              child: _buildWithShimmer(
+                HealthMetricCard(
+                  icon: Icons.directions_walk,
+                  iconColor: AppColors.activity,
+                  iconBgColor: AppColors.activityBg,
+                  title: 'Aktivitas',
+                  value: data?.activity ?? '--',
+                  unit: '',
+                  subtitle: data != null ? _getTimeAgo(data.date) : 'Belum ada data',
+                  statusText: data?.activity != null ? 'Normal' : 'N/A',
+                  statusColor: data?.activity != null ? AppColors.success : Colors.grey,
+                  changeIndicator: '',
+                  changeColor: AppColors.activity,
+                ),
               ),
             ),
           ],

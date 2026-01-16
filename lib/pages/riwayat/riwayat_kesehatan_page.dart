@@ -1,17 +1,23 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/di/injection_container.dart';
+import '../../presentation/bloc/auth/auth_bloc.dart';
+import '../../presentation/bloc/auth/auth_state.dart';
 import '../../presentation/bloc/health/health_bloc.dart';
 import '../../presentation/bloc/health/health_event.dart';
 import '../../presentation/bloc/health/health_state.dart';
 import '../../data/models/health/health_summary_model.dart';
 import '../../data/repositories/health_repository.dart';
+import '../../services/health_sync_service.dart';
+import '../../services/pdf_export_service.dart';
 import 'widget/filter_data_section.dart';
 import 'widget/ringkasan_statistik_section.dart';
 import 'widget/grafik_tren_section.dart';
@@ -29,12 +35,36 @@ class _RiwayatKesehatanPageState extends State<RiwayatKesehatanPage> {
   String? _selectedTimeRange = '7 Hari';
   String? _selectedMetricType = 'Semua'; // Default: show all metrics
   String? _selectedStatus = 'Semua'; // Default: show all statuses
+  
+  // Connectivity tracking
+  bool? _previousConnectivityState;
+  StreamSubscription<bool>? _connectivitySubscription;
 
   @override
   void initState() {
     super.initState();
+    
+    // Listen to connectivity changes
+    _connectivitySubscription = sl<HealthSyncService>().connectivityStream.listen((isOnline) {
+      print('🌐 [RIWAYAT] CONNECTIVITY CHANGED: ${isOnline ? "ONLINE" : "OFFLINE"}');
+      
+      if (_previousConnectivityState != null && _previousConnectivityState != isOnline) {
+        print('🔄 [RIWAYAT] Refreshing data due to connectivity change...');
+        
+        // Refresh data when connectivity changes
+        context.read<HealthBloc>().add(FetchHealthHistoryEvent(timeRange: _getTimeRangeForApi()));
+      }
+      _previousConnectivityState = isOnline;
+    });
+    
     // Fetch health history on page load with default time range
     context.read<HealthBloc>().add(FetchHealthHistoryEvent(timeRange: _getTimeRangeForApi()));
+  }
+  
+  @override
+  void dispose() {
+    _connectivitySubscription?.cancel();
+    super.dispose();
   }
 
   void _resetFilters() {
@@ -585,6 +615,51 @@ class _RiwayatKesehatanPageState extends State<RiwayatKesehatanPage> {
         ),
         centerTitle: false,
         actions: [
+          // Connectivity Status Badge
+          StreamBuilder<bool>(
+            stream: sl<HealthSyncService>().connectivityStream,
+            builder: (context, snapshot) {
+              // Only show badge when we have actual data
+              if (!snapshot.hasData) {
+                return const SizedBox(width: 12); // Placeholder
+              }
+              
+              final isOnline = snapshot.data!;
+              return Container(
+                margin: const EdgeInsets.only(right: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                decoration: BoxDecoration(
+                  color: isOnline 
+                      ? Colors.green.withOpacity(0.1) 
+                      : Colors.orange.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: isOnline ? Colors.green : Colors.orange,
+                    width: 1.5,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      isOnline ? Icons.wifi : Icons.wifi_off,
+                      color: isOnline ? Colors.green : Colors.orange,
+                      size: 14,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      isOnline ? 'Online' : 'Offline',
+                      style: GoogleFonts.nunitoSans(
+                        color: isOnline ? Colors.green : Colors.orange,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
           // Download Button
           Container(
             margin: const EdgeInsets.only(right: 20),
@@ -666,12 +741,7 @@ class _RiwayatKesehatanPageState extends State<RiwayatKesehatanPage> {
               BlocBuilder<HealthBloc, HealthState>(
                 builder: (context, state) {
                   if (state is HealthLoading) {
-                    return const Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(20),
-                        child: CircularProgressIndicator(),
-                      ),
-                    );
+                    return _buildShimmerSkeleton();
                   }
                   
                   if (state is HealthError) {
@@ -785,84 +855,55 @@ class _RiwayatKesehatanPageState extends State<RiwayatKesehatanPage> {
     );
   }
 
-  /// Download medical report PDF from API
+  /// Download medical report PDF (works both online and offline)
   Future<void> _downloadMedicalReport(BuildContext context) async {
     try {
       // Show loading dialog
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (context) => const Center(
-          child: CircularProgressIndicator(),
+        builder: (context) => Center(
+          child: _buildLoadingShimmer(),
         ),
       );
 
-      // Get repository from dependency injection
-      final healthRepository = sl<HealthRepository>();
+      // Get current health state
+      final healthState = context.read<HealthBloc>().state;
+      final authState = context.read<AuthBloc>().state;
       
-      // Get time range for API
-      final timeRange = _getTimeRangeForApi();
-      
-      // Download PDF
-      final result = await healthRepository.downloadHealthHistoryPdf(timeRange);
-      
-      // Close loading dialog
-      if (mounted) {
-        Navigator.pop(context);
+      String userName = 'Pengguna';
+      if (authState is AuthAuthenticated) {
+        userName = authState.name;
       }
 
-      // Handle result
-      result.fold(
-        (failure) {
-          // Show error message
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Gagal mengunduh PDF: ${failure.message}'),
-                backgroundColor: AppColors.error,
-              ),
-            );
-          }
-        },
-        (pdfBytes) async {
-          // Save PDF to file
-          try {
-            final directory = await getApplicationDocumentsDirectory();
-            final now = DateTime.now();
-            final timestamp = '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}_${now.hour.toString().padLeft(2, '0')}${now.minute.toString().padLeft(2, '0')}${now.second.toString().padLeft(2, '0')}';
-            final fileName = 'Riwayat_Kesehatan_$timestamp.pdf';
-            final filePath = '${directory.path}/$fileName';
-            
-            final file = File(filePath);
-            await file.writeAsBytes(pdfBytes);
-            
-            // Share/Open PDF
-            if (mounted) {
-              await Share.shareXFiles(
-                [XFile(file.path)],
-                text: 'Riwayat Kesehatan',
-                subject: 'Laporan Kesehatan',
-              );
-              
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('PDF berhasil diunduh'),
-                  backgroundColor: AppColors.success,
-                ),
-              );
-            }
-          } catch (e) {
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Gagal menyimpan PDF: $e'),
-                  backgroundColor: AppColors.error,
-                ),
-              );
-            }
-          }
-        },
-      );
+      // Try online download first
+      try {
+        final healthRepository = sl<HealthRepository>();
+        final timeRange = _getTimeRangeForApi();
+        
+        final result = await healthRepository.downloadHealthHistoryPdf(timeRange);
+        
+        // Close loading dialog
+        if (mounted) Navigator.pop(context);
+
+        // Handle API result
+        await result.fold(
+          (failure) async {
+            // API failed, fallback to offline generation
+            print('PDF API failed: ${failure.message}, generating offline PDF...');
+            await _generateOfflinePdf(context, healthState, userName);
+          },
+          (pdfBytes) async {
+            // API success, save and share
+            await _savePdfFromBytes(context, pdfBytes, 'API');
+          },
+        );
+      } catch (e) {
+        // Network error, generate offline PDF
+        print('PDF download error: $e, generating offline PDF...');
+        if (mounted) Navigator.pop(context);
+        await _generateOfflinePdf(context, healthState, userName);
+      }
     } catch (e) {
       // Close loading dialog if still open
       if (mounted) {
@@ -877,8 +918,249 @@ class _RiwayatKesehatanPageState extends State<RiwayatKesehatanPage> {
     }
   }
 
+  /// Generate PDF offline using local data
+  Future<void> _generateOfflinePdf(
+    BuildContext context,
+    HealthState healthState,
+    String userName,
+  ) async {
+    try {
+      // Show loading
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => Center(
+          child: _buildLoadingShimmer(),
+        ),
+      );
+
+      HealthSummaryModel? summary;
+      if (healthState is HealthHistoryLoaded) {
+        summary = healthState.summary;
+      }
+
+      if (summary == null) {
+        if (mounted) {
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Tidak ada data untuk diekspor'),
+              backgroundColor: AppColors.warning,
+            ),
+          );
+        }
+        return;
+      }
+
+      // Generate PDF using local service
+      final pdfService = PdfExportService();
+      final pdfFile = await pdfService.generateHealthReportPdf(
+        summary: summary,
+        timeRange: _getTimeRangeForApi(),
+        userName: userName,
+      );
+
+      // Close loading
+      if (mounted) Navigator.pop(context);
+
+      // Share PDF
+      await pdfService.sharePdf(pdfFile);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('PDF berhasil dibuat (Mode Offline)'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal membuat PDF: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
+  /// Save PDF from bytes and share
+  Future<void> _savePdfFromBytes(
+    BuildContext context,
+    List<int> pdfBytes,
+    String source,
+  ) async {
+    try {
+      final directory = await getApplicationDocumentsDirectory();
+      final now = DateTime.now();
+      final timestamp = DateFormat('yyyyMMdd_HHmmss').format(now);
+      final fileName = 'Riwayat_Kesehatan_$timestamp.pdf';
+      final filePath = '${directory.path}/$fileName';
+      
+      final file = File(filePath);
+      await file.writeAsBytes(pdfBytes);
+      
+      // Share PDF
+      if (mounted) {
+        await Share.shareXFiles(
+          [XFile(file.path)],
+          text: 'Riwayat Kesehatan',
+          subject: 'Laporan Kesehatan',
+        );
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('PDF berhasil diunduh ($source)'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal menyimpan PDF: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
   /// Download PDF from AppBar button
   Future<void> _downloadPdfFromAppBar() async {
     await _downloadMedicalReport(context);
+  }
+
+  /// Build shimmer skeleton for loading state
+  Widget _buildShimmerSkeleton() {
+    return Shimmer.fromColors(
+      baseColor: Colors.grey[300]!,
+      highlightColor: Colors.grey[100]!,
+      period: const Duration(milliseconds: 1500),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  width: 150,
+                  height: 20,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            // List items
+            ...List.generate(3, (index) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey[200]!),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Container(
+                          width: 120,
+                          height: 16,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                        Container(
+                          width: 60,
+                          height: 24,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      width: double.infinity,
+                      height: 14,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      width: 200,
+                      height: 14,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Build loading shimmer for dialogs
+  Widget _buildLoadingShimmer() {
+    return Shimmer.fromColors(
+      baseColor: Colors.grey[300]!,
+      highlightColor: Colors.grey[100]!,
+      period: const Duration(milliseconds: 1500),
+      child: Container(
+        width: 80,
+        height: 80,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: const Icon(
+          Icons.download_rounded,
+          size: 40,
+          color: Colors.white,
+        ),
+      ),
+    );
   }
 }

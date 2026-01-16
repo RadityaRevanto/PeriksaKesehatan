@@ -38,7 +38,7 @@ class _PeringatanKesehatanPageState extends State<PeringatanKesehatanPage> {
         title: Text(
           'Peringatan Kesehatan',
           style: GoogleFonts.nunitoSans(
-            fontSize: 18,
+            fontSize: 20,
             fontWeight: FontWeight.bold,
             color: AppColors.textPrimary,
           ),
@@ -169,29 +169,31 @@ class _PeringatanKesehatanPageState extends State<PeringatanKesehatanPage> {
             children: [
               // Header info
               Container(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFFF3C4),
+                  color: const Color(0xFFFFF9E6),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: const Color(0xFFFF9800).withOpacity(0.3),
+                    color: const Color(0xFFD68910),
+                    width: 1.5,
                   ),
                 ),
                 child: Row(
                   children: [
                     Icon(
                       Icons.info_outline,
-                      color: const Color(0xFFFF9800),
-                      size: 20,
+                      color: const Color(0xFFD68910),
+                      size: 24,
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
                         'Anda memiliki ${alerts.length} peringatan kesehatan. Tap untuk melihat detail.',
                         style: GoogleFonts.nunitoSans(
-                          fontSize: 13,
-                          color: const Color(0xFF5D4037),
-                          height: 1.4,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF3E2723),
+                          height: 1.5,
                         ),
                       ),
                     ),
@@ -281,17 +283,17 @@ class _PeringatanKesehatanPageState extends State<PeringatanKesehatanPage> {
                       Text(
                         alert.alertType,
                         style: GoogleFonts.nunitoSans(
-                          fontSize: 16,
+                          fontSize: 17,
                           fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimary,
+                          color: const Color(0xFF212121),
                         ),
                       ),
                       const SizedBox(height: 2),
                       Text(
                         dateTime,
                         style: GoogleFonts.nunitoSans(
-                          fontSize: 12,
-                          color: Colors.grey[600],
+                          fontSize: 14,
+                          color: const Color(0xFF616161),
                         ),
                       ),
                     ],
@@ -327,14 +329,15 @@ class _PeringatanKesehatanPageState extends State<PeringatanKesehatanPage> {
                   Text(
                     alert.label,
                     style: GoogleFonts.nunitoSans(
-                      fontSize: 14,
-                      color: Colors.grey[700],
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF424242),
                     ),
                   ),
                   Text(
                     alert.value,
                     style: GoogleFonts.nunitoSans(
-                      fontSize: 18,
+                      fontSize: 22,
                       fontWeight: FontWeight.bold,
                       color: color,
                     ),
@@ -346,9 +349,9 @@ class _PeringatanKesehatanPageState extends State<PeringatanKesehatanPage> {
             Text(
               alert.explanation,
               style: GoogleFonts.nunitoSans(
-                fontSize: 13,
-                color: Colors.grey[700],
-                height: 1.4,
+                fontSize: 15,
+                color: const Color(0xFF424242),
+                height: 1.6,
               ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
@@ -365,7 +368,7 @@ class _PeringatanKesehatanPageState extends State<PeringatanKesehatanPage> {
                 Text(
                   'Lihat detail & tindakan',
                   style: GoogleFonts.nunitoSans(
-                    fontSize: 13,
+                    fontSize: 15,
                     fontWeight: FontWeight.w600,
                     color: AppColors.primary,
                   ),
@@ -382,14 +385,14 @@ class _PeringatanKesehatanPageState extends State<PeringatanKesehatanPage> {
     switch (status.toUpperCase()) {
       case 'TINGGI':
       case 'SANGAT TINGGI':
-        return const Color(0xFFFF9800);
+        return const Color(0xFFD68910); // Softer orange
       case 'RENDAH':
       case 'SANGAT RENDAH':
-        return const Color(0xFF2196F3);
+        return const Color(0xFF1976D2); // Deeper blue
       case 'KRITIS':
-        return const Color(0xFFE53935);
+        return const Color(0xFFC62828); // Deeper red
       default:
-        return const Color(0xFF4CAF50);
+        return const Color(0xFF388E3C); // Deeper green
     }
   }
   
@@ -397,14 +400,14 @@ class _PeringatanKesehatanPageState extends State<PeringatanKesehatanPage> {
     switch (status.toUpperCase()) {
       case 'TINGGI':
       case 'SANGAT TINGGI':
-        return const Color(0xFFFFF8E1);
+        return const Color(0xFFFFF4E0); // Warmer beige
       case 'RENDAH':
       case 'SANGAT RENDAH':
-        return const Color(0xFFE3F2FD);
+        return const Color(0xFFE1F5FE); // Lighter blue
       case 'KRITIS':
-        return const Color(0xFFFFEBEE);
+        return const Color(0xFFFFEBEE); // Keep soft pink
       default:
-        return const Color(0xFFE8F5E9);
+        return const Color(0xFFE8F5E9); // Keep soft green
     }
   }
   
