@@ -6,6 +6,7 @@ class HealthSummaryModel {
   final ActivitySummary? activity;
   final TrendCharts? trendCharts;
   final List<ReadingHistory>? readingHistory;
+  final double? latestHeight;
 
   HealthSummaryModel({
     this.bloodPressure,
@@ -14,6 +15,7 @@ class HealthSummaryModel {
     this.activity,
     this.trendCharts,
     this.readingHistory,
+    this.latestHeight,
   });
 
   factory HealthSummaryModel.fromJson(Map<String, dynamic> json) {
@@ -38,6 +40,7 @@ class HealthSummaryModel {
               .map((e) => ReadingHistory.fromJson(e as Map<String, dynamic>))
               .toList()
           : null,
+      latestHeight: json['latest_height'] != null ? (json['latest_height'] as num).toDouble() : null,
     );
   }
 
@@ -50,6 +53,7 @@ class HealthSummaryModel {
       if (trendCharts != null) 'trend_charts': trendCharts!.toJson(),
       if (readingHistory != null)
         'reading_history': readingHistory!.map((e) => e.toJson()).toList(),
+      if (latestHeight != null) 'latest_height': latestHeight,
     };
   }
 }

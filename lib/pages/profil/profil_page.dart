@@ -1,13 +1,19 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:periksa_kesehatan/core/constants/app_colors.dart';
+import 'package:periksa_kesehatan/core/network/api_endpoints.dart';
 import 'package:periksa_kesehatan/core/storage/storage_service.dart';
+import 'package:periksa_kesehatan/data/models/profile/personal_info_model.dart';
 import 'package:periksa_kesehatan/pages/auth/login/login_page.dart';
 import 'package:periksa_kesehatan/pages/profil/edit_profil_page.dart';
 import 'package:periksa_kesehatan/pages/profil/privasi_keamanan_page.dart';
 import 'package:periksa_kesehatan/pages/profil/bantuan_dukungan_page.dart';
 import 'package:periksa_kesehatan/pages/profil/syarat_ketentuan_page.dart';
+import 'package:periksa_kesehatan/pages/debug/local_data_viewer_page.dart';
 import 'package:periksa_kesehatan/presentation/bloc/auth/auth_bloc.dart';
 import 'package:periksa_kesehatan/presentation/bloc/auth/auth_event.dart';
 import 'package:periksa_kesehatan/presentation/bloc/auth/auth_state.dart';
@@ -37,7 +43,9 @@ class _ProfilePageState extends State<ProfilePage> {
   void initState() {
     super.initState();
     _loadPersonalInfo();
-    _loadHealthHistory();
+    // OPTIMIZATION: Don't load health history here - it's too heavy
+    // The stats card will use cached data from HealthBloc if available
+    // Health history is already loaded on HomePage, so we can reuse that data
   }
 
   void _loadPersonalInfo() {
@@ -47,9 +55,25 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  void _loadHealthHistory() {
-    context.read<HealthBloc>().add(const FetchHealthHistoryEvent());
+  /// Helper method to construct full image URL from relative path
+  String? _getFullImageUrl(String? photoUrl) {
+    if (photoUrl == null || photoUrl.isEmpty) {
+      return null;
+    }
+    
+    // If already a full URL (starts with http:// or https://), return as is
+    if (photoUrl.startsWith('http://') || photoUrl.startsWith('https://')) {
+      return photoUrl;
+    }
+    
+    // Otherwise, prepend the base URL (remove '/api' suffix and add the relative path)
+    final baseUrl = ApiEndpoints.baseUrl.replaceAll('/api', '');
+    // Remove leading slash from photoUrl if present to avoid double slashes
+    final cleanPhotoUrl = photoUrl.startsWith('/') ? photoUrl.substring(1) : photoUrl;
+    return '$baseUrl/$cleanPhotoUrl';
   }
+  // Force reload
+
 
   @override
   void dispose() {
@@ -58,6 +82,358 @@ class _ProfilePageState extends State<ProfilePage> {
     _phoneController.dispose();
     _addressController.dispose();
     super.dispose();
+  }
+
+  /// Fungsi untuk meminta permission kamera atau galeri
+  Future<bool> _requestPermission(ImageSource source) async {
+    Permission permission;
+    String permissionName;
+    
+    if (source == ImageSource.camera) {
+      permission = Permission.camera;
+      permissionName = 'Kamera';
+    } else {
+      permission = Permission.photos;
+      permissionName = 'Galeri';
+    }
+    
+    final status = await permission.request();
+    
+    if (status.isGranted) {
+      return true;
+    } else if (status.isDenied) {
+      if (!mounted) return false;
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Izin $permissionName diperlukan untuk mengubah foto profil',
+            style: GoogleFonts.nunitoSans(fontWeight: FontWeight.w600),
+          ),
+          backgroundColor: Colors.orange,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+      return false;
+    } else if (status.isPermanentlyDenied) {
+      if (!mounted) return false;
+      
+      // Tampilkan dialog untuk membuka settings
+      final shouldOpenSettings = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text(
+            'Izin $permissionName Diperlukan',
+            style: GoogleFonts.nunitoSans(fontWeight: FontWeight.bold),
+          ),
+          content: Text(
+            'Aplikasi membutuhkan akses $permissionName untuk mengubah foto profil. Silakan berikan izin di pengaturan.',
+            style: GoogleFonts.nunitoSans(),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text(
+                'Batal',
+                style: GoogleFonts.nunitoSans(color: Colors.grey),
+              ),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: Text(
+                'Buka Pengaturan',
+                style: GoogleFonts.nunitoSans(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+      
+      if (shouldOpenSettings == true) {
+        await openAppSettings();
+      }
+      return false;
+    }
+    
+    return false;
+  }
+
+  /// Fungsi untuk mengubah foto profil
+  Future<void> _changeProfilePhoto() async {
+    // Simpan context untuk digunakan di dalam async callbacks
+    final BuildContext dialogContext = context;
+    
+    // Tampilkan bottom sheet untuk memilih sumber foto
+    final ImageSource? source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (BuildContext context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  'Pilih Sumber Foto',
+                  style: GoogleFonts.nunitoSans(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFF2D473E),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      Icons.photo_library,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                  title: Text(
+                    'Galeri',
+                    style: GoogleFonts.nunitoSans(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  onTap: () => Navigator.pop(context, ImageSource.gallery),
+                ),
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryLight.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      Icons.camera_alt,
+                      color: AppColors.primaryLight,
+                    ),
+                  ),
+                  title: Text(
+                    'Kamera',
+                    style: GoogleFonts.nunitoSans(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  onTap: () => Navigator.pop(context, ImageSource.camera),
+                ),
+                const SizedBox(height: 10),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    // User membatalkan pemilihan sumber
+    if (source == null) return;
+
+    // Minta permission sebelum membuka kamera atau galeri
+    final hasPermission = await _requestPermission(source);
+    if (!hasPermission) {
+      return; // Permission ditolak, keluar dari fungsi
+    }
+
+    // Pilih foto dari sumber yang dipilih
+    final ImagePicker picker = ImagePicker();
+    XFile? image;
+    bool isLoadingDialogShown = false;
+    
+    try {
+      // Tambahkan timeout untuk mencegah stuck
+      image = await picker.pickImage(
+        source: source,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+        preferredCameraDevice: CameraDevice.rear, // Gunakan kamera belakang sebagai default
+      ).timeout(
+        const Duration(minutes: 5), // Timeout 5 menit
+        onTimeout: () {
+          // Jika timeout, return null (sama seperti user cancel)
+          return null;
+        },
+      );
+
+      // User membatalkan pemilihan foto
+      if (image == null) {
+        return;
+      }
+
+      // Tampilkan loading dialog
+      if (!mounted) return;
+      
+      isLoadingDialogShown = true;
+      showDialog(
+        context: dialogContext,
+        barrierDismissible: false,
+        builder: (context) => PopScope(
+          canPop: false, // Prevent back button
+          child: Center(
+            child: Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const CircularProgressIndicator(),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Mengupload foto...',
+                    style: GoogleFonts.nunitoSans(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+
+      // Upload foto ke server
+      final token = StorageService.instance.getToken();
+      if (token == null) {
+        if (!mounted) return;
+        if (isLoadingDialogShown) {
+          Navigator.of(dialogContext, rootNavigator: true).pop();
+          isLoadingDialogShown = false;
+        }
+        
+        ScaffoldMessenger.of(dialogContext).showSnackBar(
+          const SnackBar(
+            content: Text('Token tidak ditemukan. Silakan login kembali.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      // Get current personal info state
+      final personalInfoState = dialogContext.read<PersonalInfoBloc>().state;
+      bool hasExistingProfile = false;
+      PersonalInfoModel? currentPersonalInfo;
+
+      if (personalInfoState is PersonalInfoLoaded) {
+        hasExistingProfile = personalInfoState.personalInfo != null;
+        currentPersonalInfo = personalInfoState.personalInfo;
+      }
+
+      // Create PersonalInfoModel with current data or minimal data
+      final personalInfo = PersonalInfoModel(
+        name: currentPersonalInfo?.name ?? _nameController.text,
+        birthDate: currentPersonalInfo?.birthDate ?? _birthDateController.text,
+        phone: currentPersonalInfo?.phone ?? _phoneController.text,
+        address: currentPersonalInfo?.address ?? _addressController.text,
+        height: currentPersonalInfo?.height,
+        weight: currentPersonalInfo?.weight,
+        age: currentPersonalInfo?.age,
+        photoUrl: currentPersonalInfo?.photoUrl,
+      );
+
+      // Upload foto dengan update atau create
+      final File imageFile = File(image.path);
+      if (hasExistingProfile) {
+        dialogContext.read<PersonalInfoBloc>().add(
+          UpdatePersonalInfo(token, personalInfo, imageFile: imageFile),
+        );
+      } else {
+        dialogContext.read<PersonalInfoBloc>().add(
+          CreatePersonalInfo(token, personalInfo, imageFile: imageFile),
+        );
+      }
+
+      // Wait for the upload to complete
+      await Future.delayed(const Duration(milliseconds: 500));
+      
+      if (!mounted) return;
+      if (isLoadingDialogShown) {
+        Navigator.of(dialogContext, rootNavigator: true).pop();
+        isLoadingDialogShown = false;
+      }
+
+      // Show success message
+      ScaffoldMessenger.of(dialogContext).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Foto profil berhasil diubah',
+            style: GoogleFonts.nunitoSans(fontWeight: FontWeight.w600),
+          ),
+          backgroundColor: Colors.green,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+    } catch (e) {
+      // Handle errors (termasuk permission denied, camera not available, dll)
+      if (!mounted) return;
+      
+      // Close loading dialog if it's shown
+      if (isLoadingDialogShown) {
+        try {
+          Navigator.of(dialogContext, rootNavigator: true).pop();
+        } catch (_) {
+          // Dialog mungkin sudah tertutup
+        }
+      }
+      
+      // Tampilkan pesan error yang lebih informatif
+      String errorMessage = 'Gagal mengubah foto profil';
+      if (e.toString().contains('camera_access_denied') || 
+          e.toString().contains('Permission denied')) {
+        errorMessage = 'Akses kamera ditolak. Silakan berikan izin di pengaturan.';
+      } else if (e.toString().contains('No camera available')) {
+        errorMessage = 'Kamera tidak tersedia pada perangkat ini.';
+      } else {
+        errorMessage = 'Gagal mengubah foto profil: ${e.toString()}';
+      }
+      
+      ScaffoldMessenger.of(dialogContext).showSnackBar(
+        SnackBar(
+          content: Text(
+            errorMessage,
+            style: GoogleFonts.nunitoSans(fontWeight: FontWeight.w600),
+          ),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    }
   }
 
   @override
@@ -207,27 +583,93 @@ class _ProfilePageState extends State<ProfilePage> {
                     photoUrl = personalInfoState.personalInfo!.photoUrl;
                   }
 
+                  // Get full image URL
+                  final fullImageUrl = _getFullImageUrl(photoUrl);
+
                   return Row(
                     children: [
-                      // Avatar dengan border modern
-                      Container(
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 3),
-                        ),
-                        child: CircleAvatar(
-                          radius: 38,
-                          backgroundImage: photoUrl != null
-                              ? NetworkImage(photoUrl)
-                              : null,
-                          child: photoUrl == null
-                              ? const Icon(
-                                  Icons.person,
-                                  size: 40,
+                      // Avatar dengan border modern dan tombol edit
+                      Stack(
+                        children: [
+                          Container(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 3),
+                            ),
+                            child: fullImageUrl != null
+                                ? CircleAvatar(
+                                    radius: 38,
+                                    backgroundColor: AppColors.authPrimary,
+                                    child: ClipOval(
+                                      child: Image.network(
+                                        fullImageUrl,
+                                        width: 76,
+                                        height: 76,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (context, error, stackTrace) {
+                                          // Show default icon if image fails to load
+                                          return const Icon(
+                                            Icons.person,
+                                            size: 40,
+                                            color: Colors.white,
+                                          );
+                                        },
+                                        loadingBuilder: (context, child, loadingProgress) {
+                                          if (loadingProgress == null) return child;
+                                          // Show loading indicator while image is loading
+                                          return Center(
+                                            child: CircularProgressIndicator(
+                                              value: loadingProgress.expectedTotalBytes != null
+                                                  ? loadingProgress.cumulativeBytesLoaded /
+                                                      loadingProgress.expectedTotalBytes!
+                                                  : null,
+                                              strokeWidth: 2,
+                                              valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  )
+                                : CircleAvatar(
+                                    radius: 38,
+                                    backgroundColor: AppColors.authPrimary,
+                                    child: const Icon(
+                                      Icons.person,
+                                      size: 40,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                          ),
+                          // Tombol edit foto
+                          Positioned(
+                            bottom: 0,
+                            right: 0,
+                            child: GestureDetector(
+                              onTap: _changeProfilePhoto,
+                              child: Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: Colors.white, width: 2),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.2),
+                                      blurRadius: 4,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: const Icon(
+                                  Icons.camera_alt,
+                                  size: 16,
                                   color: Colors.white,
-                                )
-                              : null,
-                        ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(width: 20),
                       Expanded(
@@ -304,9 +746,20 @@ class _ProfilePageState extends State<ProfilePage> {
               weightValue = personalInfoState.personalInfo!.weight!.toStringAsFixed(0);
             }
 
-            // Get height from Personal Info (Not available in Health History Summary)
+            // Get height from Personal Info or Health History
             String heightValue = "-";
-            if (personalInfoState is PersonalInfoLoaded && 
+            
+            // Try Health History first
+            if (healthState is HealthHistoryLoaded && 
+                healthState.summary?.latestHeight != null &&
+                healthState.summary!.latestHeight! > 0) {
+              heightValue = healthState.summary!.latestHeight!.toStringAsFixed(1);
+              if (heightValue.endsWith('.0')) {
+                heightValue = heightValue.substring(0, heightValue.length - 2);
+              }
+            }
+            // Fallback to Profile Personal Info
+            else if (personalInfoState is PersonalInfoLoaded && 
                 personalInfoState.personalInfo?.height != null &&
                 personalInfoState.personalInfo!.height! > 0) {
               heightValue = personalInfoState.personalInfo!.height!.toStringAsFixed(0);
@@ -445,15 +898,13 @@ class _ProfilePageState extends State<ProfilePage> {
       ),
       child: Column(
         children: [
-          _buildSettingTile(Icons.notifications, "Notifikasi", trailing: "Aktif"),
-          _buildDivider(),
           _buildSettingTile(Icons.verified_user, "Privasi & Keamanan"),
-          _buildDivider(),
-          _buildSettingTile(Icons.language, "Bahasa", trailing: "Bahasa Indonesia"),
           _buildDivider(),
           _buildSettingTile(Icons.help, "Bantuan & Dukungan"),
           _buildDivider(),
           _buildSettingTile(Icons.description, "Syarat & Ketentuan"),
+          _buildDivider(),
+          _buildSettingTile(Icons.bug_report, "Debug: Data Lokal", iconColor: Colors.orange),
           _buildDivider(),
           _buildSettingTile(Icons.info, "Tentang Aplikasi", trailing: "v1.0.5", isLast: true),
         ],
@@ -539,7 +990,7 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
 
-  Widget _buildSettingTile(IconData icon, String title, {String? trailing, bool isLast = false}) {
+  Widget _buildSettingTile(IconData icon, String title, {String? trailing, bool isLast = false, Color? iconColor}) {
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -566,6 +1017,13 @@ class _ProfilePageState extends State<ProfilePage> {
                 builder: (context) => const SyaratKetentuanPage(),
               ),
             );
+          } else if (title == "Debug: Data Lokal") {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const LocalDataViewerPage(),
+              ),
+            );
           }
         },
         borderRadius: BorderRadius.vertical(
@@ -573,7 +1031,7 @@ class _ProfilePageState extends State<ProfilePage> {
           bottom: isLast ? const Radius.circular(15) : Radius.zero,
         ),
         child: ListTile(
-          leading: Icon(icon, color: AppColors.authPrimary),
+          leading: Icon(icon, color: iconColor ?? AppColors.authPrimary),
           title: Text(
             title,
             style: GoogleFonts.nunitoSans(

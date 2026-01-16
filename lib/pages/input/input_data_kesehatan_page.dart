@@ -17,7 +17,9 @@ import 'package:periksa_kesehatan/pages/input/widgets/save_data_button.dart';
 import 'package:periksa_kesehatan/pages/input/widgets/height_section.dart';
 
 class InputDataKesehatanPage extends StatefulWidget {
-  const InputDataKesehatanPage({super.key});
+  final DateTime? selectedDate;
+  
+  const InputDataKesehatanPage({super.key, this.selectedDate});
 
   @override
   State<InputDataKesehatanPage> createState() => _InputDataKesehatanPageState();
@@ -88,7 +90,7 @@ class _InputDataKesehatanPageState extends State<InputDataKesehatanPage> {
     print('Parsed Data - Weight: $weight');
     print('Parsed Data - Height: $height');
 
-    // Create health data entity with current date/time
+    // Create health data entity with selected date or current date/time
     final healthData = HealthData(
       systolic: systolic,
       diastolic: diastolic,
@@ -97,7 +99,7 @@ class _InputDataKesehatanPageState extends State<InputDataKesehatanPage> {
       height: height,
       heartRate: heartRate,
       activity: activity,
-      date: DateTime.now(), // Otomatis menggunakan tanggal saat input
+      date: widget.selectedDate ?? DateTime.now(), // Gunakan tanggal yang dipilih atau tanggal saat ini
     );
     
     print('Constructed HealthData: $healthData');
@@ -148,34 +150,41 @@ class _InputDataKesehatanPageState extends State<InputDataKesehatanPage> {
           );
         }
       },
-      child: Scaffold(
-        backgroundColor: AppColors.background,
-        appBar: AppBar(
-          backgroundColor: Colors.white,
-          elevation: 0,
-          leading: IconButton(
-            icon: const Icon(
-              Icons.arrow_back,
-              color: AppColors.textPrimary,
+      child: GestureDetector(
+        // Menutup keyboard saat tap di luar input field
+        onTap: () {
+          FocusScope.of(context).unfocus();
+        },
+        child: Scaffold(
+          backgroundColor: AppColors.background,
+          appBar: AppBar(
+            backgroundColor: Colors.white,
+            elevation: 0,
+            leading: IconButton(
+              icon: const Icon(
+                Icons.arrow_back,
+                color: AppColors.textPrimary,
+              ),
+              onPressed: () => Navigator.of(context).pop(),
             ),
-            onPressed: () => Navigator.of(context).pop(),
-          ),
-          title: Text(
-            'Input Data Kesehatan',
-            style: GoogleFonts.nunitoSans(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
+            title: Text(
+              'Input Data Kesehatan',
+              style: GoogleFonts.nunitoSans(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            centerTitle: false,
+            shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.only(
+                topRight: Radius.circular(20),
+              ),
             ),
           ),
-          centerTitle: false,
-          shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.only(
-              topRight: Radius.circular(20),
-            ),
-          ),
-        ),
-        body: SingleChildScrollView(
+          body: SingleChildScrollView(
+            // Menutup keyboard saat scroll
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -231,6 +240,7 @@ class _InputDataKesehatanPageState extends State<InputDataKesehatanPage> {
               isLoading: isLoading,
             );
           },
+        ),
         ),
       ),
     );

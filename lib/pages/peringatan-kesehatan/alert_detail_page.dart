@@ -6,8 +6,15 @@ import 'package:periksa_kesehatan/domain/entities/health_alert.dart';
 import 'package:periksa_kesehatan/pages/peringatan-kesehatan/widgets/info_card.dart';
 import 'package:periksa_kesehatan/pages/peringatan-kesehatan/widgets/action_card.dart';
 import 'package:periksa_kesehatan/pages/peringatan-kesehatan/widgets/puskesmas_card.dart';
+import 'package:periksa_kesehatan/pages/peringatan-kesehatan/widgets/video_card.dart';
 import 'package:periksa_kesehatan/services/maps_service.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:periksa_kesehatan/core/di/injection_container.dart' as di;
+import 'package:periksa_kesehatan/presentation/bloc/education/education_bloc.dart';
+import 'package:periksa_kesehatan/presentation/bloc/education/education_event.dart';
+import 'package:periksa_kesehatan/presentation/bloc/education/education_state.dart';
+import 'package:periksa_kesehatan/data/models/education/education_model.dart';
+import 'package:periksa_kesehatan/pages/edukasi/video_player_page.dart';
 
 class AlertDetailPage extends StatefulWidget {
   final HealthAlert alert;
@@ -23,16 +30,20 @@ class AlertDetailPage extends StatefulWidget {
 
 class _AlertDetailPageState extends State<AlertDetailPage> with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  late EducationBloc _educationBloc;
   
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 5, vsync: this);
+    _educationBloc = di.sl<EducationBloc>();
+    _educationBloc.add(const FetchEducationalVideosEvent());
   }
   
   @override
   void dispose() {
     _tabController.dispose();
+    _educationBloc.close();
     super.dispose();
   }
 
@@ -55,7 +66,7 @@ class _AlertDetailPageState extends State<AlertDetailPage> with SingleTickerProv
         title: Text(
           'Detail Peringatan',
           style: GoogleFonts.nunitoSans(
-            fontSize: 18,
+            fontSize: 20,
             fontWeight: FontWeight.bold,
             color: AppColors.textPrimary,
           ),
@@ -92,21 +103,20 @@ class _AlertDetailPageState extends State<AlertDetailPage> with SingleTickerProv
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            widget.alert.alertType,
-                            style: GoogleFonts.nunitoSans(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
+                        widget.alert.alertType,
+                        style: GoogleFonts.nunitoSans(
+                          fontSize: 19,
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFF212121),
+                        ),
+                      ),
                           const SizedBox(height: 4),
                           Text(
                             dateTime,
                             style: GoogleFonts.nunitoSans(
                               fontSize: 13,
-                              color: Colors.grey[600],
-                            ),
-                          ),
+                    ),
+                    ),
                         ],
                       ),
                     ),
@@ -116,14 +126,14 @@ class _AlertDetailPageState extends State<AlertDetailPage> with SingleTickerProv
                         color: bgColor,
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      child: Text(
-                        widget.alert.status,
-                        style: GoogleFonts.nunitoSans(
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: color,
-                        ),
+                       child: Text(
+                      widget.alert.status,
+                      style: GoogleFonts.nunitoSans(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: color,
                       ),
+                    ),
                     ),
                   ],
                 ),
@@ -138,21 +148,21 @@ class _AlertDetailPageState extends State<AlertDetailPage> with SingleTickerProv
                   child: Column(
                     children: [
                       Text(
-                        widget.alert.label,
+                        widget.alert.label, // Retained original content, applied new style
                         style: GoogleFonts.nunitoSans(
                           fontSize: 14,
-                          color: Colors.grey[700],
+                          color: const Color(0xFF616161),
                         ),
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        widget.alert.value,
-                        style: GoogleFonts.nunitoSans(
-                          fontSize: 32,
-                          fontWeight: FontWeight.bold,
-                          color: color,
-                        ),
+                      widget.alert.value,
+                      style: GoogleFonts.nunitoSans(
+                        fontSize: 36,
+                        fontWeight: FontWeight.bold,
+                        color: color,
                       ),
+                    ),
                     ],
                   ),
                 ),
@@ -444,393 +454,215 @@ class _AlertDetailPageState extends State<AlertDetailPage> with SingleTickerProv
   }
   
   Widget _buildVideoTab() {
-    return ListView(
-      padding: const EdgeInsets.all(20),
-      children: [
-        if (widget.alert.educationVideos.isNotEmpty)
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.red.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(
-                        Icons.play_circle_outline,
-                        color: Colors.red,
-                        size: 20,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Text(
-                      'Video Edukasi Kesehatan',
-                      style: GoogleFonts.nunitoSans(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Tonton video berikut untuk memahami lebih lanjut tentang kondisi Anda',
-                  style: GoogleFonts.nunitoSans(
-                    fontSize: 13,
-                    color: Colors.grey[600],
+    return BlocBuilder<EducationBloc, EducationState>(
+      bloc: _educationBloc,
+      builder: (context, state) {
+        if (state is EducationLoading) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        List<VideoModel> displayVideos = [];
+
+        if (state is EducationDataLoaded) {
+          // 1. Cari kategori exact match dengan alert.category
+          var matchingCat = state.categories.firstWhere(
+            (c) => c.kategori.toLowerCase() == widget.alert.category.toLowerCase(),
+            orElse: () => EducationCategoryModel(id: -1, kategori: '', videos: []),
+          );
+
+          if (matchingCat.id != -1) {
+            displayVideos = matchingCat.videos;
+          } else {
+            // 2. Fallback: cari kategori yang mengandung kata dari alert.alertType
+            matchingCat = state.categories.firstWhere(
+              (c) => c.kategori.toLowerCase().contains(widget.alert.alertType.toLowerCase()),
+              orElse: () => EducationCategoryModel(id: -1, kategori: '', videos: []),
+            );
+            if (matchingCat.id != -1) {
+              displayVideos = matchingCat.videos;
+            }
+          }
+        }
+
+        return ListView(
+          padding: const EdgeInsets.all(20),
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
                   ),
-                ),
-                const SizedBox(height: 20),
-                // Debug: Print education videos
-                Builder(
-                  builder: (context) {
-                    print('=== DEBUG EDUCATION VIDEOS ===');
-                    print('Total videos: ${widget.alert.educationVideos.length}');
-                    for (var i = 0; i < widget.alert.educationVideos.length; i++) {
-                      print('Video $i: ${widget.alert.educationVideos[i]}');
-                    }
-                    print('==============================');
-                    return const SizedBox.shrink();
-                  },
-                ),
-                ...widget.alert.educationVideos.asMap().entries.map((entry) {
-                  final index = entry.key;
-                  final video = entry.value;
-                  
-                  return Padding(
-                    padding: EdgeInsets.only(bottom: index < widget.alert.educationVideos.length - 1 ? 12 : 0),
-                    child: InkWell(
-                      onTap: () async {
-                        try {
-                          final Uri videoUri = Uri.parse(video);
-                          if (await canLaunchUrl(videoUri)) {
-                            await launchUrl(
-                              videoUri,
-                              mode: LaunchMode.externalApplication,
-                            );
-                          } else {
-                            if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('Tidak dapat membuka video: $video'),
-                                  backgroundColor: AppColors.error,
-                                  duration: const Duration(seconds: 3),
-                                ),
-                              );
-                            }
-                          }
-                        } catch (e) {
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Error membuka video: ${e.toString()}'),
-                                backgroundColor: AppColors.error,
-                                duration: const Duration(seconds: 3),
-                              ),
-                            );
-                          }
-                        }
-                      },
-                      borderRadius: BorderRadius.circular(12),
-                      child: Container(
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
                         decoration: BoxDecoration(
+                          color: const Color(0xFF81C784),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(
+                          Icons.video_library,
                           color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: Colors.grey[200]!,
+                          size: 24,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'Video Edukasi Kesehatan',
+                          style: GoogleFonts.nunitoSans(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary,
                           ),
                         ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Pelajari lebih lanjut tentang kondisi kesehatan Anda melalui video berikut',
+                    style: GoogleFonts.nunitoSans(
+                      fontSize: 14,
+                      color: AppColors.textSecondary,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  
+                  if (displayVideos.isEmpty && state is! EducationLoading)
+                     Center(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 20.0),
+                          child: Column(
+                            children: [
+                              Icon(
+                                Icons.videocam_off_outlined,
+                                size: 48,
+                                color: Colors.grey[400],
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                'Belum ada video terkait peringatan ini',
+                                style: GoogleFonts.nunitoSans(
+                                  fontSize: 14,
+                                  color: Colors.grey[600],
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                        ),
+                     )
+                  else
+                    ...displayVideos.asMap().entries.map((entry) {
+                      final index = entry.key;
+                      final video = entry.value;
+                      final color = _getColorByStatus(widget.alert.status);
+                      
+                      return Padding(
+                        padding: EdgeInsets.only(bottom: index < displayVideos.length - 1 ? 16 : 0),
+                        child: VideoCard(
+                          title: video.title,
+                          language: 'Bahasa Indonesia', // Default fallback
+                          doctor: 'Tim Edukasi',         // Default fallback
+                          duration: video.duration ?? '05:00',
+                          playButtonColor: color,
+                          videoUrl: video.url,
+                          onTap: () {
+                             Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => VideoPlayerPage(
+                                    videoUrl: video.url,
+                                    title: video.title,
+                                    language: 'Bahasa Indonesia',
+                                    doctor: 'Tim Edukasi',
+                                    duration: video.duration ?? '05:00',
+                                  ),
+                                ),
+                              );
+                          },
+                        ),
+                      );
+                    }).toList(),
+                  
+                  const SizedBox(height: 16),
+                  
+                  if (displayVideos.isNotEmpty)
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton(
+                        onPressed: () {
+                           // Navigasi ke halaman Edukasi utama jika diperlukan user
+                        },
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          side: BorderSide(
+                            color: const Color(0xFF4CAF50).withOpacity(0.3),
+                            width: 1,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          backgroundColor: Colors.white,
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            // Thumbnail section
-                            ClipRRect(
-                              borderRadius: const BorderRadius.only(
-                                topLeft: Radius.circular(12),
-                                topRight: Radius.circular(12),
-                              ),
-                              child: Stack(
-                                children: [
-                                  // YouTube Thumbnail
-                                  _getYouTubeThumbnail(video) != null
-                                      ? Image.network(
-                                          _getYouTubeThumbnail(video)!,
-                                          width: double.infinity,
-                                          height: 180,
-                                          fit: BoxFit.cover,
-                                          errorBuilder: (context, error, stackTrace) {
-                                            // Fallback if thumbnail fails to load
-                                            return Container(
-                                              width: double.infinity,
-                                              height: 180,
-                                              color: Colors.grey[300],
-                                              child: const Center(
-                                                child: Icon(
-                                                  Icons.play_circle_outline,
-                                                  size: 64,
-                                                  color: Colors.grey,
-                                                ),
-                                              ),
-                                            );
-                                          },
-                                        )
-                                      : Container(
-                                          width: double.infinity,
-                                          height: 180,
-                                          color: Colors.grey[300],
-                                          child: const Center(
-                                            child: Icon(
-                                              Icons.play_circle_outline,
-                                              size: 64,
-                                              color: Colors.grey,
-                                            ),
-                                          ),
-                                        ),
-                                  
-                                  // Play button overlay
-                                  Positioned.fill(
-                                    child: Container(
-                                      decoration: BoxDecoration(
-                                        gradient: LinearGradient(
-                                          begin: Alignment.topCenter,
-                                          end: Alignment.bottomCenter,
-                                          colors: [
-                                            Colors.transparent,
-                                            Colors.black.withOpacity(0.3),
-                                          ],
-                                        ),
-                                      ),
-                                      child: Center(
-                                        child: Container(
-                                          padding: const EdgeInsets.all(16),
-                                          decoration: BoxDecoration(
-                                            color: Colors.red.withOpacity(0.9),
-                                            shape: BoxShape.circle,
-                                          ),
-                                          child: const Icon(
-                                            Icons.play_arrow,
-                                            color: Colors.white,
-                                            size: 40,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  
-                                  // Duration badge (optional - you can remove if not needed)
-                                  Positioned(
-                                    bottom: 8,
-                                    right: 8,
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 4,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.black.withOpacity(0.8),
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          const Icon(
-                                            Icons.play_circle_filled,
-                                            color: Colors.white,
-                                            size: 12,
-                                          ),
-                                          const SizedBox(width: 4),
-                                          Text(
-                                            'YouTube',
-                                            style: GoogleFonts.nunitoSans(
-                                              fontSize: 10,
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
+                            const Icon(
+                              Icons.video_library_outlined,
+                              color: Color(0xFF4CAF50),
+                              size: 20,
                             ),
-                            
-                            // Video info section
-                            Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          'Video Edukasi ${index + 1}',
-                                          style: GoogleFonts.nunitoSans(
-                                            fontSize: 12,
-                                            color: Colors.grey[600],
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          _extractYouTubeVideoId(video) != null
-                                              ? 'Tonton video untuk informasi lebih lanjut'
-                                              : video,
-                                          style: GoogleFonts.nunitoSans(
-                                            fontSize: 14,
-                                            color: AppColors.textPrimary,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Icon(
-                                    Icons.arrow_forward_ios,
-                                    size: 16,
-                                    color: Colors.grey[400],
-                                  ),
-                                ],
+                            const SizedBox(width: 8),
+                            Text(
+                              'Lihat Semua Video',
+                              style: GoogleFonts.nunitoSans(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: const Color(0xFF4CAF50),
                               ),
                             ),
                           ],
                         ),
                       ),
                     ),
-                  );
-                }).toList(),
-              ],
-            ),
-          )
-        else
-          Center(
-            child: Padding(
-              padding: const EdgeInsets.all(40.0),
-              child: Column(
-                children: [
-                  Icon(
-                    Icons.videocam_off_outlined,
-                    size: 64,
-                    color: Colors.grey[400],
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Belum ada video edukasi',
-                    style: GoogleFonts.nunitoSans(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Video edukasi akan ditampilkan di sini jika tersedia',
-                    style: GoogleFonts.nunitoSans(
-                      fontSize: 14,
-                      color: Colors.grey[500],
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
                 ],
               ),
             ),
-          ),
-      ],
+          ],
+        );
+      },
     );
   }
   
-  /// Extract YouTube video ID from various YouTube URL formats
-  String? _extractYouTubeVideoId(String url) {
-    try {
-      print('Extracting video ID from: $url');
-      
-      // Remove any whitespace
-      url = url.trim();
-      
-      final uri = Uri.parse(url);
-      
-      // Format: https://youtu.be/VIDEO_ID or https://youtu.be/VIDEO_ID?si=...
-      if (uri.host.contains('youtu.be')) {
-        final videoId = uri.pathSegments.isNotEmpty ? uri.pathSegments[0] : null;
-        print('Extracted from youtu.be: $videoId');
-        return videoId;
-      }
-      
-      // Format: https://www.youtube.com/watch?v=VIDEO_ID
-      // Format: https://youtube.com/watch?v=VIDEO_ID
-      if (uri.host.contains('youtube.com')) {
-        final videoId = uri.queryParameters['v'];
-        print('Extracted from youtube.com: $videoId');
-        return videoId;
-      }
-      
-      // Format: https://m.youtube.com/watch?v=VIDEO_ID (mobile)
-      if (uri.host.contains('m.youtube.com')) {
-        final videoId = uri.queryParameters['v'];
-        print('Extracted from m.youtube.com: $videoId');
-        return videoId;
-      }
-      
-      print('Could not extract video ID - unsupported format');
-      return null;
-    } catch (e) {
-      print('Error extracting video ID: $e');
-      return null;
-    }
-  }
-  
-  /// Get YouTube thumbnail URL from video URL
-  /// Returns high quality thumbnail (hqdefault.jpg)
-  String? _getYouTubeThumbnail(String videoUrl) {
-    final videoId = _extractYouTubeVideoId(videoUrl);
-    if (videoId != null) {
-      // YouTube thumbnail formats:
-      // - maxresdefault.jpg (1920x1080) - not always available
-      // - sddefault.jpg (640x480)
-      // - hqdefault.jpg (480x360) - reliable
-      // - mqdefault.jpg (320x180)
-      // - default.jpg (120x90)
-      final thumbnailUrl = 'https://img.youtube.com/vi/$videoId/hqdefault.jpg';
-      print('Generated thumbnail URL: $thumbnailUrl');
-      return thumbnailUrl;
-    }
-    print('Cannot generate thumbnail - video ID is null');
-    return null;
-  }
+
   
   Color _getColorByStatus(String status) {
     switch (status.toUpperCase()) {
       case 'TINGGI':
       case 'SANGAT TINGGI':
-        return const Color(0xFFFF9800);
+        return const Color(0xFFD68910); // Softer orange
       case 'RENDAH':
       case 'SANGAT RENDAH':
-        return const Color(0xFF2196F3);
+        return const Color(0xFF1976D2); // Deeper blue
       case 'KRITIS':
-        return const Color(0xFFE53935);
+        return const Color(0xFFC62828); // Deeper red
       default:
-        return const Color(0xFF4CAF50);
+        return const Color(0xFF388E3C); // Deeper green
     }
   }
   
@@ -838,14 +670,14 @@ class _AlertDetailPageState extends State<AlertDetailPage> with SingleTickerProv
     switch (status.toUpperCase()) {
       case 'TINGGI':
       case 'SANGAT TINGGI':
-        return const Color(0xFFFFF8E1);
+        return const Color(0xFFFFF4E0); // Warmer beige
       case 'RENDAH':
       case 'SANGAT RENDAH':
-        return const Color(0xFFE3F2FD);
+        return const Color(0xFFE1F5FE); // Lighter blue
       case 'KRITIS':
-        return const Color(0xFFFFEBEE);
+        return const Color(0xFFFFEBEE); // Keep soft pink
       default:
-        return const Color(0xFFE8F5E9);
+        return const Color(0xFFE8F5E9); // Keep soft green
     }
   }
   

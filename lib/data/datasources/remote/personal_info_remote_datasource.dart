@@ -39,13 +39,16 @@ class PersonalInfoRemoteDatasource {
   }) async {
     try {
       final map = personalInfo.toJson();
-      // Remove photo_url to avoid validation error
+      
+      // LOGIC: Sesuai Instruksi User
+      // 1. Selalu hapus photo_url agar tidak kena validasi URL di backend
       map.remove('photo_url');
       
-      // If image is provided, add as MultipartFile
+      // 2. Jika ada file baru, kirim sebagai field 'photo'
       if (imageFile != null) {
         map['photo'] = await MultipartFile.fromFile(imageFile.path);
       }
+      // Jika tidak ada file baru, map tidak berisi 'photo' maupun 'photo_url'
 
       final response = await apiClient.put(
         '/profile',
@@ -74,10 +77,12 @@ class PersonalInfoRemoteDatasource {
     try {
       // Gunakan toJsonForCreate() untuk memastikan name dan birth_date selalu ada
       final map = personalInfo.toJsonForCreate();
-      // Remove photo_url to avoid validation error
+      
+      // LOGIC: Sesuai Instruksi User
+      // 1. Selalu hapus photo_url agar tidak kena validasi URL di backend
       map.remove('photo_url');
       
-      // If image is provided, add as MultipartFile
+      // 2. Jika ada file baru, kirim sebagai field 'photo'
       if (imageFile != null) {
         map['photo'] = await MultipartFile.fromFile(imageFile.path);
       }

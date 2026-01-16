@@ -1,7 +1,8 @@
 
 class ApiEndpoints {
+
   
-  static const String baseUrl = 'http://localhost:8080/api';
+  static const String baseUrl = 'http://192.168.1.19:8080/api'; // Physical iOS device
   
   // Auth endpoints
   static const String login = '/auth/login';
@@ -23,14 +24,14 @@ class ApiEndpoints {
   static const String articles = '/articles';
   static const String articleDetail = '/articles'; // + /{id}
   
-  // Edukasi endpoints
-  static const String educations = '/educations';
-  static const String educationDetail = '/educations'; // + /{id}
+  // // Edukasi endpoints
+  // static const String educations = '/educations';
+  // static const String educationDetail = '/educations'; // + /{id}
   
   // Education Video endpoints
+  // Education Video endpoints
   static const String educationVideos = '/education/get-educational-videos';
-  static const String educationVideosByCategory = '/education/get-educational-videos'; // + /{id}
-  
+  static const String educationVideosByCategory = '/education/get-educational-videos'; // + /{id}  
   // Private constructor untuk mencegah instantiasi
   ApiEndpoints._();
 }

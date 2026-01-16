@@ -16,6 +16,9 @@ import 'package:periksa_kesehatan/presentation/bloc/auth/auth_bloc.dart';
 import 'package:periksa_kesehatan/presentation/bloc/health/health_bloc.dart';
 import 'package:periksa_kesehatan/presentation/bloc/education/education_bloc.dart';
 import 'package:periksa_kesehatan/presentation/bloc/personal_info/personal_info_bloc.dart';
+import 'package:periksa_kesehatan/services/health_sync_service.dart';
+import 'package:periksa_kesehatan/services/remember_me_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// Service locator menggunakan GetIt
 final sl = GetIt.instance;
@@ -29,6 +32,26 @@ Future<void> init() async {
   sl.registerLazySingleton(() => StorageService.instance);
   sl.registerLazySingleton(() => ApiClient());
   sl.registerLazySingleton(() => http.Client());
+
+  // Services
+  // Register SharedPreferences instance
+  final sharedPreferences = await SharedPreferences.getInstance();
+  sl.registerLazySingleton<SharedPreferences>(() => sharedPreferences);
+  
+  // Register RememberMeService
+  sl.registerLazySingleton<RememberMeService>(
+    () => RememberMeService(sl()),
+  );
+  
+  sl.registerLazySingleton(() {
+    final service = HealthSyncService(
+      databaseHelper: sl(),
+      storageService: sl(),
+      client: sl(),
+    );
+    service.init(); // Initialize connectivity listener immediately
+    return service;
+  });
 
   // Database
   sl.registerLazySingleton(() => DatabaseHelper.instance);
@@ -70,6 +93,8 @@ Future<void> init() async {
   sl.registerLazySingleton<HealthRepository>(
     () => HealthRepositoryImpl(
       remoteDataSource: sl(),
+      authLocalDataSource: sl(), 
+      databaseHelper: sl(),
     ),
   );
   sl.registerLazySingleton<EducationRepository>(
@@ -79,7 +104,10 @@ Future<void> init() async {
     ),
   );
   sl.registerLazySingleton<PersonalInfoRepository>(
-    () => PersonalInfoRepository(sl()),
+    () => PersonalInfoRepository(
+      remoteDatasource: sl(),
+      databaseHelper: sl(),
+    ),
   );
 
   // BLoC

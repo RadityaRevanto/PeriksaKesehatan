@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
+import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 import '../../core/constants/app_colors.dart';
 import '../../services/offline_video_service.dart';
 
@@ -14,7 +15,6 @@ class VideoPlayerPage extends StatefulWidget {
   final String doctor;
   final String duration;
 
-
   const VideoPlayerPage({
     super.key,
     required this.videoUrl,
@@ -22,7 +22,6 @@ class VideoPlayerPage extends StatefulWidget {
     required this.language,
     required this.doctor,
     required this.duration,
-
   });
 
   @override
@@ -30,15 +29,22 @@ class VideoPlayerPage extends StatefulWidget {
 }
 
 class _VideoPlayerPageState extends State<VideoPlayerPage> {
-  late VideoPlayerController _videoPlayerController;
+  // Use nullable controller to handle cases
+  VideoPlayerController? _videoPlayerController;
   ChewieController? _chewieController;
+  YoutubePlayerController? _youtubeController;
+  
   bool _isLoading = true;
   bool _hasError = false;
-
+  
+  // Offline/Download State
   double _downloadProgress = 0.0;
   bool _isDownloading = false;
   String? _statusMessage;
   String _errorMessage = '';
+
+  // YouTube State
+  bool _isYoutube = false;
 
   @override
   void initState() {
@@ -50,6 +56,33 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
     try {
       if (widget.videoUrl.isEmpty) {
         throw Exception('URL video tidak valid');
+      }
+
+      // 0. Cek apakah ini Link YouTube
+      if (widget.videoUrl.contains('youtube.com') || widget.videoUrl.contains('youtu.be')) {
+        final videoId = _getVideoId(widget.videoUrl);
+        if (videoId.isNotEmpty) {
+           _youtubeController = YoutubePlayerController(
+             initialVideoId: videoId,
+             flags: const YoutubePlayerFlags(
+               autoPlay: true,
+               mute: false,
+               enableCaption: true,
+               forceHD: false,
+             ),
+           );
+           
+           if (mounted) {
+             setState(() {
+               _isYoutube = true;
+               _isLoading = false;
+               _statusMessage = null;
+             });
+           }
+        } else {
+           throw Exception('ID Video YouTube tidak valid');
+        }
+        return;
       }
 
       // 1. Cek jika ini adalah Asset Lokal (bukan URL internet)
@@ -88,7 +121,7 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
         _videoPlayerController = VideoPlayerController.file(File(localPath));
       }
 
-      // Initialize Controller (sama untuk keduanya)
+      // Initialize Controller (Hanya jika bukan YouTube)
       if (mounted) {
         setState(() {
           _isDownloading = false;
@@ -96,63 +129,56 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
         });
       }
 
-      await _videoPlayerController.initialize();
+      if (_videoPlayerController != null) {
+        await _videoPlayerController!.initialize();
 
-      if (!mounted) return;
+        if (!mounted) return;
 
-      _chewieController = ChewieController(
-        videoPlayerController: _videoPlayerController,
-        autoPlay: true,
-        looping: false,
-        fullScreenByDefault: true,
-        aspectRatio: 16 / 9,
-        showControls: true,
-        materialProgressColors: ChewieProgressColors(
-          playedColor: AppColors.primary,
-          handleColor: AppColors.primary,
-          backgroundColor: Colors.grey[300]!,
-          bufferedColor: Colors.grey[200]!,
-        ),
-        placeholder: Container(
-          color: Colors.black,
-          child: const Center(
-            child: CircularProgressIndicator(
-              color: Colors.white,
+        _chewieController = ChewieController(
+          videoPlayerController: _videoPlayerController!,
+          autoPlay: true,
+          looping: false,
+          fullScreenByDefault: true,
+          aspectRatio: 16 / 9,
+          showControls: true,
+          materialProgressColors: ChewieProgressColors(
+            playedColor: AppColors.primary,
+            handleColor: AppColors.primary,
+            backgroundColor: Colors.grey[300]!,
+            bufferedColor: Colors.grey[200]!,
+          ),
+          placeholder: Container(
+            color: Colors.black,
+            child: const Center(
+              child: CircularProgressIndicator(
+                color: Colors.white,
+              ),
             ),
           ),
-        ),
-        errorBuilder: (context, errorMessage) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(
-                  Icons.error_outline,
-                  color: Colors.white,
-                  size: 48,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Error memuat video',
-                  style: GoogleFonts.nunitoSans(
+          errorBuilder: (context, errorMessage) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.error_outline,
                     color: Colors.white,
-                    fontSize: 16,
+                    size: 48,
                   ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  errorMessage,
-                  style: GoogleFonts.nunitoSans(
-                    color: Colors.white70,
-                    fontSize: 12,
+                  const SizedBox(height: 16),
+                  Text(
+                    'Error memuat video',
+                    style: GoogleFonts.nunitoSans(
+                      color: Colors.white,
+                      fontSize: 16,
+                    ),
                   ),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
-          );
-        },
-      );
+                ],
+              ),
+            );
+          },
+        );
+      }
 
       if (mounted) {
         setState(() {
@@ -173,7 +199,8 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
 
   @override
   void dispose() {
-    _videoPlayerController.dispose();
+    _youtubeController?.dispose();
+    _videoPlayerController?.dispose();
     _chewieController?.dispose();
     // Reset orientation to portrait when leaving the page
     SystemChrome.setPreferredOrientations([
@@ -181,6 +208,12 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
       DeviceOrientation.portraitDown,
     ]);
     super.dispose();
+  }
+
+  String _getVideoId(String url) {
+    RegExp regExp = RegExp(r'^.*(youtu.be\/|v\/|watch\?v=|&v=)([^#&?]*).*');
+    Match? match = regExp.firstMatch(url);
+    return (match != null && match.groupCount >= 2) ? match.group(2)! : '';
   }
 
   @override
@@ -203,173 +236,201 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
           ),
         ),
       ),
-      body: _isDownloading
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const CircularProgressIndicator(
-                    color: AppColors.primary,
-                  ),
-                  const SizedBox(height: 20),
-                  Text(
-                    'Mengunduh Video: ${(_downloadProgress * 100).toStringAsFixed(0)}%',
-                    style: GoogleFonts.nunitoSans(
-                      color: AppColors.textPrimary,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 40),
-                    child: LinearProgressIndicator(
-                      value: _downloadProgress,
-                      backgroundColor: Colors.grey[300],
-                      valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
-                    ),
-                  ),
-                ],
-              ),
-            )
-          : _isLoading
-              ? const Center(
-                  child: CircularProgressIndicator(
-                    color: AppColors.primary,
-                  ),
-                )
-          : _hasError
+      body: _isYoutube
+          ? _buildYoutubeBody()
+          : _isDownloading
               ? Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(
-                        Icons.error_outline,
-                        color: Colors.red[400],
-                        size: 64,
+                      const CircularProgressIndicator(
+                        color: AppColors.primary,
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 20),
                       Text(
-                        'Gagal memuat video',
+                        'Mengunduh Video: ${(_downloadProgress * 100).toStringAsFixed(0)}%',
                         style: GoogleFonts.nunitoSans(
                           color: AppColors.textPrimary,
-                          fontSize: 18,
+                          fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 10),
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: Text(
-                          _errorMessage.isNotEmpty ? _errorMessage : 'Pastikan koneksi internet Anda stabil',
-                          style: GoogleFonts.nunitoSans(
-                            color: AppColors.textSecondary,
-                            fontSize: 14,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      ElevatedButton(
-                        onPressed: () {
-                          setState(() {
-                            _isLoading = true;
-                            _hasError = false;
-                          });
-                          _initializeVideo();
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 24,
-                            vertical: 12,
-                          ),
-                        ),
-                        child: Text(
-                          'Coba Lagi',
-                          style: GoogleFonts.nunitoSans(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                          ),
+                        padding: const EdgeInsets.symmetric(horizontal: 40),
+                        child: LinearProgressIndicator(
+                          value: _downloadProgress,
+                          backgroundColor: Colors.grey[300],
+                          valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
                         ),
                       ),
                     ],
                   ),
                 )
-              : _chewieController == null
+              : _isLoading
                   ? const Center(
                       child: CircularProgressIndicator(
-                        color: Colors.white,
+                        color: AppColors.primary,
                       ),
                     )
-                  : SingleChildScrollView(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Video Player
-                          AspectRatio(
-                            aspectRatio: 16 / 9,
-                            child: Chewie(
-                              controller: _chewieController!,
-                            ),
-                          ),
-                          // Video Info
-                          Container(
-                            color: Colors.white,
-                            padding: const EdgeInsets.all(20),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // Title
-                                Text(
-                                  widget.title,
-                                  style: GoogleFonts.nunitoSans(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.textPrimary,
-                                    height: 1.4,
-                                  ),
+                  : _hasError
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.error_outline,
+                                color: Colors.red[400],
+                                size: 64,
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'Gagal memuat video',
+                                style: GoogleFonts.nunitoSans(
+                                  color: AppColors.textPrimary,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
                                 ),
-                                const SizedBox(height: 12),
-                                // Doctor and Language
-                                Text(
-                                  '${widget.language} • ${widget.doctor}',
+                              ),
+                              const SizedBox(height: 8),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 20),
+                                child: Text(
+                                  _errorMessage.isNotEmpty 
+                                      ? _errorMessage 
+                                      : 'Pastikan koneksi internet Anda stabil',
                                   style: GoogleFonts.nunitoSans(
-                                    fontSize: 14,
                                     color: AppColors.textSecondary,
+                                    fontSize: 14,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                              const SizedBox(height: 24),
+                              ElevatedButton(
+                                onPressed: () {
+                                  setState(() {
+                                    _isLoading = true;
+                                    _hasError = false;
+                                  });
+                                  _initializeVideo();
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.primary,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 24,
+                                    vertical: 12,
                                   ),
                                 ),
-                                const SizedBox(height: 16),
-                                // Engagement Metrics
-                                Row(
-                                  children: [
-
-                                    Row(
-                                      children: [
-                                        Icon(
-                                          Icons.access_time,
-                                          size: 18,
-                                          color: AppColors.textSecondary,
-                                        ),
-                                        const SizedBox(width: 6),
-                                        Text(
-                                          widget.duration,
-                                          style: GoogleFonts.nunitoSans(
-                                            fontSize: 14,
-                                            color: AppColors.textSecondary,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
+                                child: Text(
+                                  'Coba Lagi',
+                                  style: GoogleFonts.nunitoSans(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
-                      ],
+                        )
+                      : _chewieController == null
+                          ? const Center(
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                              ),
+                            )
+                          : SingleChildScrollView(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Video Player for MP4/Assets
+                                  AspectRatio(
+                                    aspectRatio: 16 / 9,
+                                    child: Chewie(
+                                      controller: _chewieController!,
+                                    ),
+                                  ),
+                                  _buildVideoInfo(),
+                                ],
+                              ),
+                            ),
+    );
+  }
+
+  // Widget for YouTube Video Inline Player
+  Widget _buildYoutubeBody() {
+    if (_youtubeController == null) return const SizedBox();
+
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          YoutubePlayer(
+             controller: _youtubeController!,
+             showVideoProgressIndicator: true,
+             progressIndicatorColor: AppColors.primary,
+             progressColors: const ProgressBarColors(
+                playedColor: AppColors.primary,
+                handleColor: AppColors.primary,
+             ),
+          ),
+          _buildVideoInfo(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVideoInfo() {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Title
+          Text(
+            widget.title,
+            style: GoogleFonts.nunitoSans(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textPrimary,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 12),
+          // Doctor and Language
+          Text(
+            '${widget.language} • ${widget.doctor}',
+            style: GoogleFonts.nunitoSans(
+              fontSize: 14,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 16),
+          // Engagement Metrics
+          Row(
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.access_time,
+                    size: 18,
+                    color: AppColors.textSecondary,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    widget.duration,
+                    style: GoogleFonts.nunitoSans(
+                      fontSize: 14,
+                      color: AppColors.textSecondary,
                     ),
                   ),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
-
